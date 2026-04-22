@@ -1,0 +1,17 @@
+{
+  "name": "irin-bot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@discordjs/rest": "^2.2.0",
+    "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.39.7",
+    "axios": "^1.15.2",
+    "discord.js": "^14.14.1",
+    "express": "^4.22.1",
+    "undici": "^6.6.2"
+  }
+}
