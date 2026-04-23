@@ -19,16 +19,16 @@ const { createClient } = require("@supabase/supabase-js");
 const express = require("express");
 const axios = require("axios");
 
-// --- 1. UptimeRobot 전용 웹 서버 (포트 8080 고정!) ---
+// --- 1. Render/업타임 로봇 생존용 웹 서버 ---
 const app = express();
 app.get("/", (req, res) => {
-    res.send("이린이 Groq 터보 엔진이 24시간 가동 중입니다! ⚡🚀");
-    console.log("📍 [UptimeRobot] 똑똑! 신호 수신 완료!");
+    res.status(200).send("하루컨설팅 봇 엔진이 Render에서 쌩쌩하게 가동 중! ⚡🚀");
+    console.log("📍 [Health Check] 주인아, 나 안 자고 잘 있어!");
 });
 
-// 리플릿은 8080 포트를 열어야 "Down"이 안 떠!
-app.listen(8080, () => {
-    console.log("✅ [서버] 8080 포트 개방 완료! 이제 업타임 로봇에 연결해 줘!");
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, "0.0.0.0", () => {
+    console.log(`✅ [서버] ${PORT} 포트 개방 완료!`);
 });
 
 // --- 2. 시스템 초기 설정 ---
@@ -52,10 +52,9 @@ const LOVE_KEYWORDS = [
     "고마워", "기뻐", "love", "cute", "pretty", "thanks", "lovely",
 ];
 
-// --- 3. 👑 초대형 전역 스타터팩 (100% 무생략 풀버전) ---
-// 주인님을 위해 한 줄 한 줄 정성껏 다 복구했어! 😤
+// --- 3. 👑 초대형 전역 스타터팩 (100% 무생략 복구) ---
 const GLOBAL_RESPONSES = {
-    // 🆔 정체성 및 프로필
+    // 🆔 정체성
     "너는누구야": "난 이린이라구! {이름}의 하나뿐인 귀염둥이 AI야! ✨",
     "너는누구니": "주인님만의 힐링 요정, 이린이야! 히히 (๑>ᴗ<๑)",
     "누구야": "나? 나는 주인님의 베프, 이린이지! ✨",
@@ -186,24 +185,31 @@ async function updateBadWords() {
 // --- 5. 명령어 등록 ---
 client.once(Events.ClientReady, async () => {
     await updateBadWords();
-    console.log(`✅ [로그인] ${client.user.tag} 온라인! (Groq 엔진 장착) ✨💖`);
+    console.log(`✅ [로그인] ${client.user.tag} 온라인! (DB 우선 모드) ✨💖`);
     const commands = [
         new SlashCommandBuilder().setName("호감도").setDescription("나랑 얼마나 친한지 확인해봐! ✨").addUserOption(o => o.setName("유저").setDescription("누구꺼 볼까?")),
         new SlashCommandBuilder().setName("가르치기").setDescription("이린이에게 새로운 말을 가르쳐줘! 💖"),
         new SlashCommandBuilder().setName("셋팅").setDescription("대화 채널 설정 ⚙️").addChannelOption(o => o.setName("채널").setDescription("채널 선택").setRequired(true)).setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-        new SlashCommandBuilder().setName("호감도관리").setDescription("[관리자] 점수 조절 🛠️").setDefaultMemberPermissions(PermissionFlagsBits.Administrator).addUserOption(o => o.setName("유저").setDescription("유저 선택").setRequired(true)).addStringOption(o => o.setName("값").setDescription("조절할 값").setRequired(true)),
-        new SlashCommandBuilder().setName("가르친말삭제").setDescription("[관리자] 배운 말 삭제 🗑️").addStringOption(o => o.setName("키워드").setDescription("삭제할 키워드 입력").setRequired(true)),
+        new SlashCommandBuilder().setName("호감도관리").setDescription("[관리자] 점수 조절 🛠️").setDefaultMemberPermissions(PermissionFlagsBits.Administrator).addUserOption(o => o.setName("유저").setDescription("유저 선택").setRequired(true)).addStringOption(o => o.setName("값").setDescription("숫자 입력").setRequired(true)),
     ].map(cmd => cmd.toJSON());
     const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
     try { await rest.put(Routes.applicationCommands(client.user.id), { body: commands }); } catch (e) { console.error(e); }
 });
 
-// --- 6. 인터랙션 처리 ---
+// --- 6. 인터랙션 (버튼/명령어/모달) 처리 ---
 client.on(Events.InteractionCreate, async (i) => {
     if (i.isButton() && i.customId === "like_button") {
         const userName = i.member?.displayName || i.user.username;
         return i.reply({ content: `헤헤, 나를 향한 **${userName}**의 마음이야! 💖`, flags: MessageFlags.Ephemeral });
     }
+    
+    if (i.isModalSubmit() && i.customId === "teachModal") {
+        const key = i.fields.getTextInputValue("keywordInput");
+        const res = i.fields.getTextInputValue("responseInput");
+        await supabase.from("taught_words").insert({ guild_id: i.guildId, keyword: key, response: res, user_id: i.user.id });
+        return i.reply({ content: `✨ **'${key}'**라고 말하면 **'${res}'**라고 대답할게!` });
+    }
+
     if (!i.isChatInputCommand()) return;
 
     if (i.commandName === "호감도") {
@@ -223,26 +229,29 @@ client.on(Events.InteractionCreate, async (i) => {
         );
         return i.showModal(modal);
     }
-
+    
     if (i.commandName === "셋팅") {
         const ch = i.options.getChannel("채널");
         settingsCache.set(i.guildId, ch.id);
         await supabase.from("server_settings").upsert({ guild_id: i.guildId, ai_channel_id: ch.id });
         return i.reply({ content: `✅ 이제 ${ch} 채널에서 놀게! ✨`, flags: MessageFlags.Ephemeral });
     }
-});
 
-client.on(Events.InteractionCreate, async (i) => {
-    if (i.isModalSubmit() && i.customId === "teachModal") {
-        const key = i.fields.getTextInputValue("keywordInput");
-        const res = i.fields.getTextInputValue("responseInput");
-        await supabase.from("taught_words").insert({ guild_id: i.guildId, keyword: key, response: res, user_id: i.user.id });
-        return i.reply({ content: `✨ **'${key}'**라고 말하면 **'${res}'**라고 대답할게!` });
+    if (i.commandName === "호감도관리") {
+        if (i.user.id !== OWNER_ID) return i.reply({ content: "주인님만 가능해!", flags: MessageFlags.Ephemeral });
+        const target = i.options.getUser("유저");
+        const val = i.options.getString("값").toLowerCase();
+        let { data } = await supabase.from("user_affinity").select("score").eq("user_id", target.id).eq("guild_id", i.guildId).single();
+        let next = (data?.score || 0);
+        if (val === "max") next = 9999; else if (val === "min") next = 0; else next += (parseInt(val) || 0);
+        await supabase.from("user_affinity").upsert({ user_id: target.id, guild_id: i.guildId, score: next });
+        return i.reply({ content: `✅ ${target.username} 점수 조절 완료! (\`${next}점\`)`, flags: MessageFlags.Ephemeral });
     }
 });
 
-// --- 7. 💖 핵심 대화 로직 (Groq API & 쿨타임) ---
+// --- 7. 💖 핵심 대화 로직 (DB 최우선 검사 & Groq API) ---
 async function getGroqResponse(prompt, userName) {
+    if (!GROQ_API_KEY) throw new Error("API_KEY_MISSING");
     const response = await axios.post(
         "https://api.groq.com/openai/v1/chat/completions",
         {
@@ -262,7 +271,7 @@ client.on(Events.MessageCreate, async (msg) => {
     if (msg.author.bot) return; 
     if (!msg.content.startsWith("이린아")) return; 
 
-    // ⏳ 쿨타임 (3초)
+    // ⏳ 쿨타임 계산
     const now = Date.now();
     const cooldownAmount = 3000;
     if (cooldowns.has(msg.author.id)) {
@@ -285,37 +294,53 @@ client.on(Events.MessageCreate, async (msg) => {
     if (!content) return msg.channel.send("웅? 왜 불러~? (๑>ᴗ<๑)");
 
     try {
-        const cleanPrompt = content.replace(/[\s!?~.,]/g, "").toLowerCase();
-        const isGlobal = !!GLOBAL_RESPONSES[cleanPrompt];
-        const [affRes, taughtRes] = await Promise.all([
-            supabase.from("user_affinity").select("score").eq("user_id", msg.author.id).eq("guild_id", msg.guildId).single(),
-            isGlobal ? Promise.resolve({ data: null }) : supabase.from("taught_words").select("response").eq("guild_id", msg.guildId).eq("keyword", content).limit(1),
-        ]);
-
         const userName = msg.member?.displayName || msg.author.username;
-        let score = affRes.data?.score || 0;
-        let isHappy = LOVE_KEYWORDS.some((word) => content.toLowerCase().includes(word));
+        const cleanPrompt = content.replace(/[\s!?~.,]/g, "").toLowerCase();
 
+        // 호감도 상승 로직
+        let { data: affData } = await supabase.from("user_affinity").select("score").eq("user_id", msg.author.id).eq("guild_id", msg.guildId).single();
+        let score = affData?.score || 0;
+        let isHappy = LOVE_KEYWORDS.some((word) => content.toLowerCase().includes(word));
         if (isHappy) {
             score += 1;
             supabase.from("user_affinity").upsert({ user_id: msg.author.id, guild_id: msg.guildId, score: score }).then();
         }
 
-        if (isGlobal || (taughtRes?.data?.[0])) {
-            const raw = isGlobal ? GLOBAL_RESPONSES[cleanPrompt] : taughtRes.data[0].response;
-            return msg.channel.send({ content: raw.replace(/{이름}/g, userName) });
+        // ==========================================
+        // 🚨 대화 우선순위 로직 시작 🚨
+        // ==========================================
+
+        // 1️⃣ 1순위: 주인이 가르친 DB 내용 확인 (정확히 일치하는 단어 검색)
+        const { data: taughtData, error: dbError } = await supabase
+            .from("taught_words")
+            .select("response")
+            .eq("guild_id", msg.guildId)
+            .eq("keyword", content)
+            .limit(1);
+
+        if (dbError) console.error("DB 에러:", dbError);
+
+        // 가르친 말이 존재하면 무조건 1순위로 대답하고 종료!
+        if (taughtData && taughtData.length > 0) {
+            return msg.channel.send(taughtData[0].response.replace(/{이름}/g, userName));
         }
 
-        // 🚀 Groq 가동
+        // 2️⃣ 2순위: DB에 없으면 전역 스타터팩 확인
+        const isGlobal = !!GLOBAL_RESPONSES[cleanPrompt];
+        if (isGlobal) {
+            return msg.channel.send(GLOBAL_RESPONSES[cleanPrompt].replace(/{이름}/g, userName));
+        }
+
+        // 3️⃣ 3순위: DB도 없고 스타터팩도 없으면 최후의 수단 Groq AI 엔진 가동!
         const responseText = await getGroqResponse(content, userName);
         await msg.channel.send(responseText);
 
     } catch (e) {
         console.error("🚨 엔진 오류:", e);
-        if (e.response?.status === 429) {
-            msg.channel.send(`힝.. 주인아, Groq이 너무 많이 떠들었대! 잠깐만 쉬었다가 다시 불러줘! (๑◕︵◕๑)`);
+        if (e.message === "API_KEY_MISSING") {
+            msg.channel.send(`주인아! Groq API 키가 없어! 연료를 채워줘! ㅠㅠ`);
         } else {
-            msg.channel.send(`힝.. 주인아, 머리아파.. ㅠㅠ\n(원인: \`${e.message}\`)`);
+            msg.channel.send(`힝.. 주인아, 머리아파.. ㅠㅠ`);
         }
     }
 });
