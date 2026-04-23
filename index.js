@@ -310,19 +310,27 @@ client.on(Events.MessageCreate, async (msg) => {
         // 🚨 대화 우선순위 로직 시작 🚨
         // ==========================================
 
-        // 1️⃣ 1순위: 주인이 가르친 DB 내용 확인 (정확히 일치하는 단어 검색)
+        // 1️⃣ 1순위: 주인이 가르친 DB 내용 확인 (띄어쓰기/특수문자 완벽 방어!)
         const { data: taughtData, error: dbError } = await supabase
             .from("taught_words")
-            .select("response")
-            .eq("guild_id", msg.guildId)
-            .eq("keyword", content)
-            .limit(1);
+            .select("keyword, response")
+            .eq("guild_id", msg.guildId);
 
         if (dbError) console.error("DB 에러:", dbError);
 
-        // 가르친 말이 존재하면 무조건 1순위로 대답하고 종료!
+        let matchedResponse = null;
         if (taughtData && taughtData.length > 0) {
-            return msg.channel.send(taughtData[0].response.replace(/{이름}/g, userName));
+            // DB에 있는 단어들을 싹 다 뒤져서 띄어쓰기 떼고 비교해버리기!
+            const found = taughtData.find(row => 
+                row.keyword === content || 
+                row.keyword.replace(/[\s!?~.,]/g, "").toLowerCase() === cleanPrompt
+            );
+            if (found) matchedResponse = found.response;
+        }
+
+        // 가르친 말이 존재하면 무조건 1순위로 대답하고 종료!
+        if (matchedResponse) {
+            return msg.channel.send(matchedResponse.replace(/{이름}/g, userName));
         }
 
         // 2️⃣ 2순위: DB에 없으면 전역 스타터팩 확인
