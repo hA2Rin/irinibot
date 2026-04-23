@@ -28,7 +28,6 @@ app.listen(PORT, "0.0.0.0", () => console.log(`✅ [서버] 포트 개방!`));
 // --- 2. 시스템 초기 설정 (URL 자동 청소 기능 탑재!) ---
 const OWNER_ID = process.env.OWNER_ID;
 
-// 🌟 https://www.electrolux.co.kr/appliances/vacuum-cleaners/ 렌더 설정에 슬래시가 있어도 알아서 지워주는 똑똑한 로직!
 const rawUrl = process.env.SUPABASE_URL || "";
 const SUPABASE_URL = rawUrl.split('/rest/v1')[0].replace(/\/$/, ""); 
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
@@ -257,7 +256,7 @@ client.on(Events.InteractionCreate, async (i) => {
     }
 });
 
-// --- 7. 💖 대화 로직 (에러 자백 기능 포함) ---
+// --- 7. 💖 대화 로직 ---
 async function getGroqResponse(prompt, userName) {
     if (!GROQ_API_KEY) throw new Error("API_KEY_MISSING");
     const response = await axios.post(
@@ -279,15 +278,12 @@ client.on(Events.MessageCreate, async (msg) => {
     if (msg.author.bot) return; 
     if (!msg.content.startsWith("이린아")) return; 
 
-    // 쿨타임 계산
+    // 쿨타임
     const now = Date.now();
     const cooldownAmount = 3000;
     if (cooldowns.has(msg.author.id)) {
         const expirationTime = cooldowns.get(msg.author.id) + cooldownAmount;
-        if (now < expirationTime) {
-            const timeLeft = ((expirationTime - now) / 1000).toFixed(1);
-            return msg.reply(`힝.. 너무 빨라! **${timeLeft}초**만 기다려줘! 😤`).then(m => setTimeout(() => m.delete(), 2000));
-        }
+        if (now < expirationTime) return;
     }
     cooldowns.set(msg.author.id, now);
 
@@ -305,30 +301,28 @@ client.on(Events.MessageCreate, async (msg) => {
         const userName = msg.member?.displayName || msg.author.username;
         const cleanPrompt = content.replace(/[\s!?~.,]/g, "").toLowerCase();
 
-        // 호감도 상승 로직
-        let { data: affData } = await supabase.from("user_affinity").select("score").eq("user_id", msg.author.id).eq("guild_id", msg.guildId).single();
-        let score = affData?.score || 0;
-        let isHappy = LOVE_KEYWORDS.some((word) => content.toLowerCase().includes(word));
-        if (isHappy) {
-            score += 1;
-            supabase.from("user_affinity").upsert({ user_id: msg.author.id, guild_id: msg.guildId, score: score }).then();
-        }
-
-        // 🚨 1순위: DB 내용 확인 및 에러 확인
+        // 🚨 [에러 추적 기능 추가] DB를 아예 못 가져오는지 체크!
         const { data: taughtData, error: dbError } = await supabase
             .from("taught_words")
             .select("keyword, response")
             .eq("guild_id", msg.guildId);
 
+        // 1. 통신 자체가 실패했을 때
         if (dbError) {
-            return msg.channel.send(`🚨 **[비상] 옛날 기억을 못 가져오겠어!!**\n이유: \`${dbError.message}\``);
+            return msg.channel.send(`🚨 **창고(DB) 문이 잠겼어!**\n이유: \`${dbError.message}\`\n코드: \`${dbError.code}\``);
+        }
+
+        // 2. 연결은 됐는데 내용이 없을 때
+        if (!taughtData || taughtData.length === 0) {
+            console.log("DB는 연결됐는데 데이터가 0개야!");
         }
 
         let matchedResponse = null;
         if (taughtData && taughtData.length > 0) {
+            // 더 넓게 찾기 위해 trim() 추가!
             const found = taughtData.find(row => 
-                row.keyword === content || 
-                row.keyword.replace(/[\s!?~.,]/g, "").toLowerCase() === cleanPrompt
+                row.keyword.trim() === content || 
+                row.keyword.trim().replace(/[\s!?~.,]/g, "").toLowerCase() === cleanPrompt
             );
             if (found) matchedResponse = found.response;
         }
@@ -337,23 +331,18 @@ client.on(Events.MessageCreate, async (msg) => {
             return msg.channel.send(matchedResponse.replace(/{이름}/g, userName));
         }
 
-        // 2순위: 전역 스타터팩 확인
-        const isGlobal = !!GLOBAL_RESPONSES[cleanPrompt];
-        if (isGlobal) {
+        // 스타터팩
+        if (GLOBAL_RESPONSES[cleanPrompt]) {
             return msg.channel.send(GLOBAL_RESPONSES[cleanPrompt].replace(/{이름}/g, userName));
         }
 
-        // 3순위: Groq AI 가동
+        // AI 응답
         const responseText = await getGroqResponse(content, userName);
         await msg.channel.send(responseText);
 
     } catch (e) {
         console.error("🚨 엔진 오류:", e);
-        if (e.message === "API_KEY_MISSING") {
-            msg.channel.send(`주인아! Groq API 키가 없어! 연료를 채워줘! ㅠㅠ`);
-        } else {
-            msg.channel.send(`힝.. 주인아, 머리아파.. ㅠㅠ\n(에러: \`${e.message}\`)`);
-        }
+        msg.channel.send(`힝.. 주인아, 머리아파.. ㅠㅠ (에러: \`${e.message}\`)`);
     }
 });
 
