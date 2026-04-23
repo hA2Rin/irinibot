@@ -25,9 +25,15 @@ app.get("/", (req, res) => res.status(200).send("에러 추적 모드 가동 중
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, "0.0.0.0", () => console.log(`✅ [서버] 포트 개방!`));
 
-// --- 2. 시스템 초기 설정 ---
+// --- 2. 시스템 초기 설정 (URL 자동 청소 기능 탑재!) ---
 const OWNER_ID = process.env.OWNER_ID;
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+
+// 🌟 https://www.electrolux.co.kr/appliances/vacuum-cleaners/ 렌더 설정에 슬래시가 있어도 알아서 지워주는 똑똑한 로직!
+const rawUrl = process.env.SUPABASE_URL || "";
+const SUPABASE_URL = rawUrl.split('/rest/v1')[0].replace(/\/$/, ""); 
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 const client = new Client({
