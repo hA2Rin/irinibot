@@ -21,15 +21,9 @@ const axios = require("axios");
 
 // --- 1. Render/업타임 로봇 생존용 웹 서버 ---
 const app = express();
-app.get("/", (req, res) => {
-    res.status(200).send("하루컨설팅 봇 엔진이 Render에서 쌩쌩하게 가동 중! ⚡🚀");
-    console.log("📍 [Health Check] 주인아, 나 안 자고 잘 있어!");
-});
-
+app.get("/", (req, res) => res.status(200).send("에러 추적 모드 가동 중! ⚡"));
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, "0.0.0.0", () => {
-    console.log(`✅ [서버] ${PORT} 포트 개방 완료!`);
-});
+app.listen(PORT, "0.0.0.0", () => console.log(`✅ [서버] 포트 개방!`));
 
 // --- 2. 시스템 초기 설정 ---
 const OWNER_ID = process.env.OWNER_ID;
@@ -37,11 +31,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-    ],
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
 
 const settingsCache = new Map();
@@ -185,7 +175,7 @@ async function updateBadWords() {
 // --- 5. 명령어 등록 ---
 client.once(Events.ClientReady, async () => {
     await updateBadWords();
-    console.log(`✅ [로그인] ${client.user.tag} 온라인! (DB 우선 모드) ✨💖`);
+    console.log(`✅ [로그인] ${client.user.tag} 온라인! (에러 추적 모드) ✨💖`);
     const commands = [
         new SlashCommandBuilder().setName("호감도").setDescription("나랑 얼마나 친한지 확인해봐! ✨").addUserOption(o => o.setName("유저").setDescription("누구꺼 볼까?")),
         new SlashCommandBuilder().setName("가르치기").setDescription("이린이에게 새로운 말을 가르쳐줘! 💖"),
@@ -196,7 +186,7 @@ client.once(Events.ClientReady, async () => {
     try { await rest.put(Routes.applicationCommands(client.user.id), { body: commands }); } catch (e) { console.error(e); }
 });
 
-// --- 6. 인터랙션 (버튼/명령어/모달) 처리 ---
+// --- 6. 인터랙션 (에러 자백 기능 포함) ---
 client.on(Events.InteractionCreate, async (i) => {
     if (i.isButton() && i.customId === "like_button") {
         const userName = i.member?.displayName || i.user.username;
@@ -206,7 +196,19 @@ client.on(Events.InteractionCreate, async (i) => {
     if (i.isModalSubmit() && i.customId === "teachModal") {
         const key = i.fields.getTextInputValue("keywordInput");
         const res = i.fields.getTextInputValue("responseInput");
-        await supabase.from("taught_words").insert({ guild_id: i.guildId, keyword: key, response: res, user_id: i.user.id });
+
+        // 기존 단어 덮어쓰기
+        await supabase.from("taught_words").delete().eq("guild_id", i.guildId).eq("keyword", key);
+        
+        // 🚨 데이터 저장 시도 및 에러 확인
+        const { error: insErr } = await supabase.from("taught_words").insert({ 
+            guild_id: i.guildId, keyword: key, response: res, user_id: i.user.id 
+        });
+
+        if (insErr) {
+            return i.reply({ content: `🚨 **[비상] DB 저장 실패!!**\n이유: \`${insErr.message}\`\n(이거 캡처해서 주인님한테 보여줘!!)` });
+        }
+
         return i.reply({ content: `✨ **'${key}'**라고 말하면 **'${res}'**라고 대답할게!` });
     }
 
@@ -249,7 +251,7 @@ client.on(Events.InteractionCreate, async (i) => {
     }
 });
 
-// --- 7. 💖 핵심 대화 로직 (DB 최우선 검사 & Groq API) ---
+// --- 7. 💖 대화 로직 (에러 자백 기능 포함) ---
 async function getGroqResponse(prompt, userName) {
     if (!GROQ_API_KEY) throw new Error("API_KEY_MISSING");
     const response = await axios.post(
@@ -271,7 +273,7 @@ client.on(Events.MessageCreate, async (msg) => {
     if (msg.author.bot) return; 
     if (!msg.content.startsWith("이린아")) return; 
 
-    // ⏳ 쿨타임 계산
+    // 쿨타임 계산
     const now = Date.now();
     const cooldownAmount = 3000;
     if (cooldowns.has(msg.author.id)) {
@@ -306,21 +308,18 @@ client.on(Events.MessageCreate, async (msg) => {
             supabase.from("user_affinity").upsert({ user_id: msg.author.id, guild_id: msg.guildId, score: score }).then();
         }
 
-        // ==========================================
-        // 🚨 대화 우선순위 로직 시작 🚨
-        // ==========================================
-
-        // 1️⃣ 1순위: 주인이 가르친 DB 내용 확인 (띄어쓰기/특수문자 완벽 방어!)
+        // 🚨 1순위: DB 내용 확인 및 에러 확인
         const { data: taughtData, error: dbError } = await supabase
             .from("taught_words")
             .select("keyword, response")
             .eq("guild_id", msg.guildId);
 
-        if (dbError) console.error("DB 에러:", dbError);
+        if (dbError) {
+            return msg.channel.send(`🚨 **[비상] 옛날 기억을 못 가져오겠어!!**\n이유: \`${dbError.message}\``);
+        }
 
         let matchedResponse = null;
         if (taughtData && taughtData.length > 0) {
-            // DB에 있는 단어들을 싹 다 뒤져서 띄어쓰기 떼고 비교해버리기!
             const found = taughtData.find(row => 
                 row.keyword === content || 
                 row.keyword.replace(/[\s!?~.,]/g, "").toLowerCase() === cleanPrompt
@@ -328,18 +327,17 @@ client.on(Events.MessageCreate, async (msg) => {
             if (found) matchedResponse = found.response;
         }
 
-        // 가르친 말이 존재하면 무조건 1순위로 대답하고 종료!
         if (matchedResponse) {
             return msg.channel.send(matchedResponse.replace(/{이름}/g, userName));
         }
 
-        // 2️⃣ 2순위: DB에 없으면 전역 스타터팩 확인
+        // 2순위: 전역 스타터팩 확인
         const isGlobal = !!GLOBAL_RESPONSES[cleanPrompt];
         if (isGlobal) {
             return msg.channel.send(GLOBAL_RESPONSES[cleanPrompt].replace(/{이름}/g, userName));
         }
 
-        // 3️⃣ 3순위: DB도 없고 스타터팩도 없으면 최후의 수단 Groq AI 엔진 가동!
+        // 3순위: Groq AI 가동
         const responseText = await getGroqResponse(content, userName);
         await msg.channel.send(responseText);
 
@@ -348,7 +346,7 @@ client.on(Events.MessageCreate, async (msg) => {
         if (e.message === "API_KEY_MISSING") {
             msg.channel.send(`주인아! Groq API 키가 없어! 연료를 채워줘! ㅠㅠ`);
         } else {
-            msg.channel.send(`힝.. 주인아, 머리아파.. ㅠㅠ`);
+            msg.channel.send(`힝.. 주인아, 머리아파.. ㅠㅠ\n(에러: \`${e.message}\`)`);
         }
     }
 });
