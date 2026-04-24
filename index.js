@@ -237,7 +237,10 @@ client.on(Events.InteractionCreate, async (i) => {
     
     if (i.commandName === "셋팅") {
         const ch = i.options.getChannel("채널");
-        settingsCache.set(i.guildId, ch.id);
+        
+        // 🌟 [추가 로직] 셋팅 즉시 메모리에 반영해서 딜레이 없애기!
+        settingsCache.set(i.guildId, ch.id); 
+
         await supabase.from("server_settings").upsert({ guild_id: i.guildId, ai_channel_id: ch.id });
         return i.reply({ content: `✅ 이제 ${ch} 채널에서 놀게! ✨`, flags: MessageFlags.Ephemeral });
     }
@@ -301,7 +304,7 @@ client.on(Events.MessageCreate, async (msg) => {
         // 🚨 [길드 ID 무시 긴급 수술] 서버 상관없이 키워드만 맞으면 다 불러오기!
         const { data: taughtData, error: dbError } = await supabase
             .from("taught_words")
-            .select("keyword, response"); // 🌟 .eq("guild_id", msg.guildId)를 삭제해서 모든 서버 데이터를 확인하게 함!
+            .select("keyword, response"); 
 
         if (dbError) {
             return msg.channel.send(`🚨 **창고(DB) 문이 잠겼어!**\n이유: \`${dbError.message}\``);
