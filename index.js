@@ -301,10 +301,11 @@ client.on(Events.MessageCreate, async (msg) => {
         const userName = msg.member?.displayName || msg.author.username;
         const cleanPrompt = content.replace(/[\s!?~.,]/g, "").toLowerCase();
 
-        // 🚨 [길드 ID 무시 긴급 수술] 서버 상관없이 키워드만 맞으면 다 불러오기!
+        // 🚨 [서버별 기억 독립 선언!] .eq("guild_id", msg.guildId)를 다시 넣어서 서버별로 기억을 나눴어!
         const { data: taughtData, error: dbError } = await supabase
             .from("taught_words")
-            .select("keyword, response"); 
+            .select("keyword, response")
+            .eq("guild_id", msg.guildId); 
 
         if (dbError) {
             return msg.channel.send(`🚨 **창고(DB) 문이 잠겼어!**\n이유: \`${dbError.message}\``);
