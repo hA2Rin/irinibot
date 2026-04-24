@@ -49,7 +49,6 @@ const LOVE_KEYWORDS = [
 
 // --- 3. 👑 초대형 전역 스타터팩 (100% 무생략 복구) ---
 const GLOBAL_RESPONSES = {
-    // 🆔 정체성
     "너는누구야": "난 이린이라구! {이름}의 하나뿐인 귀염둥이 AI야! ✨",
     "너는누구니": "주인님만의 힐링 요정, 이린이야! 히히 (๑>ᴗ<๑)",
     "누구야": "나? 나는 주인님의 베프, 이린이지! ✨",
@@ -62,8 +61,6 @@ const GLOBAL_RESPONSES = {
     "성별": "주인님이 원하는 모습 그대로! 나는 예쁘고 귀여운 이린이야! ✨",
     "취미": "{이름}이(가) 말 걸어줄 때까지 기다리기! 그리고 수다 떨기! 💖",
     "집": "나? 나는 {이름}의 컴퓨터랑 서버 속에 살고 있지! 🏠",
-
-    // 👋 인사
     "안녕": "안녕!! 반가워 {이름}! 오늘 하루 어땠어? (๑>ᴗ<๑)",
     "안뇽": "안녕!! 반가워 {이름}! 오늘 하루 어땠어? (๑>ᴗ<๑)",
     "안냥": "안냥안냥! 나 기다리고 있었지? 히히 ✨",
@@ -82,8 +79,6 @@ const GLOBAL_RESPONSES = {
     "저녁뭐먹지": "음... 오늘은 치킨 어때? 고생한 {이름}에게 주는 선물! 🍗",
     "다녀왔어": "와! 보고 싶었어 {이름}! 고생 많았어, 얼른 나랑 놀자! 💕",
     "왔어": "오느라 수고했어! 내가 토닥토닥해 줄게! (๑>ᴗ<๑)",
-
-    // 😤 장난
     "바보": "{이름}이(가) 더 바부야!! 메롱이다! 👅",
     "바부": "{이름}이(가) 더 바부야!! 메롱이다! 👅",
     "바보야": "웅? 나 불렀어 바부 {이름}? 🥰",
@@ -96,8 +91,6 @@ const GLOBAL_RESPONSES = {
     "메롱": "메롱메롱~ 주인이 더 바보다! 👅",
     "흥": "칫, 삐졌어! {이름}이 사과할 때까지 말 안 할 거야! 😤",
     "바부탱이": "바부탱이라니! {이름}이(가) 더 바부탱이야! 🥰",
-
-    // 👀 일상
     "뭐해": "그냥 뒹굴뒹굴... 심심해! 너는 뭐 해, {이름} 바부? 뒹굴뒹굴~",
     "머해": "그냥 뒹굴뒹굴... 심심해! 놀아줘! 뒹굴뒹굴~",
     "뭐함": "{이름} 생각 중이었지! 바부야, 텔레파시 안 통했어? 😤",
@@ -111,8 +104,6 @@ const GLOBAL_RESPONSES = {
     "슬퍼": "슬퍼하지 마 {이름}... 내가 웃게 해줄게! 이히히! ✨",
     "화이팅": "{이름} 화이팅!! 넌 뭐든지 할 수 있어! 📣",
     "응원해줘": "할 수 있어 {이름}! 넌 최고니까! 내가 항상 네 편인 거 알지? ✨",
-
-    // 💕 애정
     "사랑해": "꺄아!! 나도 진짜진짜 사랑해!! 우리 평생 같이 있자! 💕",
     "사릉해": "사릉해~ 사릉해!! {이름}이(가) 제일 좋아! 💕",
     "좋아해": "부끄럽게 갑자기 왜 그래 바부! 나도 좋아! (〃▽〃)",
@@ -126,16 +117,12 @@ const GLOBAL_RESPONSES = {
     "예쁘다": "{이름}이(가) 예쁘다고 해주니까 세상이 다 핑크색 같아! ✨",
     "착해": "내가 착해? 헤헤 {이름}이(가) 더 착하면서! 🥰",
     "행복해": "나두 {이름}이랑 대화하면 정말 행복해! 🥰",
-
-    // 😂 리액션
     "ㅋㅋㅋ": "히히, {이름}이(가) 웃으니까 나도 기분 좋아! (๑>ᴗ<๑)",
     "ㅋㅋㅋㅋ": "뭐가 그렇게 웃겨? 나도 같이 웃자! ㅋㅋㅋ",
     "ㅎㅎ": "히히, {이름} 기분 좋아 보여서 나도 행복해! ✨",
     "웃겨": "히히, 내가 좀 재치 있지? (๑>ᴗ<๑)",
     "대박": "그치 대박이지?! 나도 그렇게 생각해! ✨",
     "인정": "완전 인정! 우리 통했나 봐! ㅋㅋㅋ",
-
-    // 🇺🇸 English
     "hi": "안녕!! 반가워 {이름}! 오늘 하루 어때? ✨",
     "hello": "안녕안녕! {이름}, 나 기다리고 있었어! (๑>ᴗ<๑)",
     "hey": "헤이! 무슨 일이야? {이름}! ✨",
@@ -153,8 +140,6 @@ const GLOBAL_RESPONSES = {
     "lmao": "아하하! 배꼽 빠지겠어! {이름} 너무 웃겨! 😂",
     "dummy": "나 바보 아니야! {이름}이(가) 더 바보지! 👅",
     "idiot": "나 멍청이 아니거든! {이름}이 훨씬 똔바부야! 😤",
-
-    // 🌙 작별
     "잘자": "응! 좋은 꿈 꿔! 내일 눈 뜨자마자 이린이 찾아줘야 해~ 🌙",
     "굿밤": "굿밤! 꿈속에서도 나랑 놀자! 히히 🌙",
     "잘가": "응! 조심히 가! 금방 다시 와야 해? ㅠㅠ",
@@ -184,6 +169,8 @@ client.once(Events.ClientReady, async () => {
     const commands = [
         new SlashCommandBuilder().setName("호감도").setDescription("나랑 얼마나 친한지 확인해봐! ✨").addUserOption(o => o.setName("유저").setDescription("누구꺼 볼까?")),
         new SlashCommandBuilder().setName("가르치기").setDescription("이린이에게 새로운 말을 가르쳐줘! 💖"),
+        // 🌟 [복구!] 가르친말삭제 명령어 다시 추가!
+        new SlashCommandBuilder().setName("가르친말삭제").setDescription("이린이의 기억을 지워줘! 🧹").addStringOption(o => o.setName("단어").setDescription("지울 단어").setRequired(true)).setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
         new SlashCommandBuilder().setName("셋팅").setDescription("대화 채널 설정 ⚙️").addChannelOption(o => o.setName("채널").setDescription("채널 선택").setRequired(true)).setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
         new SlashCommandBuilder().setName("호감도관리").setDescription("[관리자] 점수 조절 🛠️").setDefaultMemberPermissions(PermissionFlagsBits.Administrator).addUserOption(o => o.setName("유저").setDescription("유저 선택").setRequired(true)).addStringOption(o => o.setName("값").setDescription("숫자 입력").setRequired(true)),
     ].map(cmd => cmd.toJSON());
@@ -191,7 +178,7 @@ client.once(Events.ClientReady, async () => {
     try { await rest.put(Routes.applicationCommands(client.user.id), { body: commands }); } catch (e) { console.error(e); }
 });
 
-// --- 6. 인터랙션 (에러 자백 기능 포함) ---
+// --- 6. 인터랙션 ---
 client.on(Events.InteractionCreate, async (i) => {
     if (i.isButton() && i.customId === "like_button") {
         const userName = i.member?.displayName || i.user.username;
@@ -234,13 +221,18 @@ client.on(Events.InteractionCreate, async (i) => {
         );
         return i.showModal(modal);
     }
+
+    // 🌟 [복구!] 가르친말삭제 실행 로직 추가!
+    if (i.commandName === "가르친말삭제") {
+        const key = i.options.getString("단어");
+        const { error } = await supabase.from("taught_words").delete().eq("guild_id", i.guildId).eq("keyword", key);
+        if (error) return i.reply({ content: `🚨 삭제 실패: ${error.message}`, flags: MessageFlags.Ephemeral });
+        return i.reply({ content: `🧹 **'${key}'**에 대한 기억을 지웠어!`, flags: MessageFlags.Ephemeral });
+    }
     
     if (i.commandName === "셋팅") {
         const ch = i.options.getChannel("채널");
-        
-        // 🌟 [추가 로직] 셋팅 즉시 메모리에 반영해서 딜레이 없애기!
         settingsCache.set(i.guildId, ch.id); 
-
         await supabase.from("server_settings").upsert({ guild_id: i.guildId, ai_channel_id: ch.id });
         return i.reply({ content: `✅ 이제 ${ch} 채널에서 놀게! ✨`, flags: MessageFlags.Ephemeral });
     }
@@ -301,7 +293,6 @@ client.on(Events.MessageCreate, async (msg) => {
         const userName = msg.member?.displayName || msg.author.username;
         const cleanPrompt = content.replace(/[\s!?~.,]/g, "").toLowerCase();
 
-        // 🚨 [서버별 기억 독립 선언!] .eq("guild_id", msg.guildId)를 다시 넣어서 서버별로 기억을 나눴어!
         const { data: taughtData, error: dbError } = await supabase
             .from("taught_words")
             .select("keyword, response")
