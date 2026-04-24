@@ -202,10 +202,8 @@ client.on(Events.InteractionCreate, async (i) => {
         const key = i.fields.getTextInputValue("keywordInput");
         const res = i.fields.getTextInputValue("responseInput");
 
-        // 기존 단어 덮어쓰기
         await supabase.from("taught_words").delete().eq("guild_id", i.guildId).eq("keyword", key);
         
-        // 🚨 데이터 저장 시도 및 에러 확인
         const { error: insErr } = await supabase.from("taught_words").insert({ 
             guild_id: i.guildId, keyword: key, response: res, user_id: i.user.id 
         });
@@ -278,7 +276,6 @@ client.on(Events.MessageCreate, async (msg) => {
     if (msg.author.bot) return; 
     if (!msg.content.startsWith("이린아")) return; 
 
-    // 쿨타임
     const now = Date.now();
     const cooldownAmount = 3000;
     if (cooldowns.has(msg.author.id)) {
@@ -301,25 +298,17 @@ client.on(Events.MessageCreate, async (msg) => {
         const userName = msg.member?.displayName || msg.author.username;
         const cleanPrompt = content.replace(/[\s!?~.,]/g, "").toLowerCase();
 
-        // 🚨 [에러 추적 기능 추가] DB를 아예 못 가져오는지 체크!
+        // 🚨 [길드 ID 무시 긴급 수술] 서버 상관없이 키워드만 맞으면 다 불러오기!
         const { data: taughtData, error: dbError } = await supabase
             .from("taught_words")
-            .select("keyword, response")
-            .eq("guild_id", msg.guildId);
+            .select("keyword, response"); // 🌟 .eq("guild_id", msg.guildId)를 삭제해서 모든 서버 데이터를 확인하게 함!
 
-        // 1. 통신 자체가 실패했을 때
         if (dbError) {
-            return msg.channel.send(`🚨 **창고(DB) 문이 잠겼어!**\n이유: \`${dbError.message}\`\n코드: \`${dbError.code}\``);
-        }
-
-        // 2. 연결은 됐는데 내용이 없을 때
-        if (!taughtData || taughtData.length === 0) {
-            console.log("DB는 연결됐는데 데이터가 0개야!");
+            return msg.channel.send(`🚨 **창고(DB) 문이 잠겼어!**\n이유: \`${dbError.message}\``);
         }
 
         let matchedResponse = null;
         if (taughtData && taughtData.length > 0) {
-            // 더 넓게 찾기 위해 trim() 추가!
             const found = taughtData.find(row => 
                 row.keyword.trim() === content || 
                 row.keyword.trim().replace(/[\s!?~.,]/g, "").toLowerCase() === cleanPrompt
@@ -331,18 +320,16 @@ client.on(Events.MessageCreate, async (msg) => {
             return msg.channel.send(matchedResponse.replace(/{이름}/g, userName));
         }
 
-        // 스타터팩
         if (GLOBAL_RESPONSES[cleanPrompt]) {
             return msg.channel.send(GLOBAL_RESPONSES[cleanPrompt].replace(/{이름}/g, userName));
         }
 
-        // AI 응답
         const responseText = await getGroqResponse(content, userName);
         await msg.channel.send(responseText);
 
     } catch (e) {
         console.error("🚨 엔진 오류:", e);
-        msg.channel.send(`힝.. 주인아, 머리아파.. ㅠㅠ (에러: \`${e.message}\`)`);
+        msg.channel.send(`힝.. 주인아, 머리아파.. ㅠㅠ`);
     }
 });
 
