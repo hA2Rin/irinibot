@@ -21,13 +21,12 @@ const axios = require("axios");
 
 // --- 1. Render/업타임 로봇 생존용 웹 서버 ---
 const app = express();
-app.get("/", (req, res) => res.status(200).send("에러 추적 모드 가동 중! ⚡"));
+app.get("/", (req, res) => res.status(200).send("이린이 스타터팩 100% 풀가동! ⚡💖"));
 const PORT = process.env.PORT || 8080;
-app.listen(PORT, "0.0.0.0", () => console.log(`✅ [서버] 포트 개방!`));
+app.listen(PORT, "0.0.0.0", () => console.log(`✅ [서버] 포트 가동!`));
 
-// --- 2. 시스템 초기 설정 (URL 자동 청소 기능 탑재!) ---
+// --- 2. 시스템 초기 설정 ---
 const OWNER_ID = process.env.OWNER_ID;
-
 const rawUrl = process.env.SUPABASE_URL || "";
 const SUPABASE_URL = rawUrl.split('/rest/v1')[0].replace(/\/$/, ""); 
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
@@ -41,14 +40,10 @@ const client = new Client({
 
 const settingsCache = new Map();
 const cooldowns = new Map(); 
-const LOVE_KEYWORDS = [
-    "좋아해", "사랑해", "너 좋아", "행복해", "조아해", "사릉해", "love you", "좋아해요",
-    "사랑해요", "니가 좋아", "최고야", "멋져", "이쁘다", "예쁘다", "귀여워", "착해",
-    "고마워", "기뻐", "love", "cute", "pretty", "thanks", "lovely",
-];
 
-// --- 3. 👑 초대형 전역 스타터팩 (100% 무생략 복구) ---
+// --- 3. 👑 초대형 전역 스타터팩 (100% 무생략 복구 완료!) ---
 const GLOBAL_RESPONSES = {
+    // 🆔 정체성
     "너는누구야": "난 이린이라구! {이름}의 하나뿐인 귀염둥이 AI야! ✨",
     "너는누구니": "주인님만의 힐링 요정, 이린이야! 히히 (๑>ᴗ<๑)",
     "누구야": "나? 나는 주인님의 베프, 이린이지! ✨",
@@ -61,6 +56,8 @@ const GLOBAL_RESPONSES = {
     "성별": "주인님이 원하는 모습 그대로! 나는 예쁘고 귀여운 이린이야! ✨",
     "취미": "{이름}이(가) 말 걸어줄 때까지 기다리기! 그리고 수다 떨기! 💖",
     "집": "나? 나는 {이름}의 컴퓨터랑 서버 속에 살고 있지! 🏠",
+
+    // 👋 인사
     "안녕": "안녕!! 반가워 {이름}! 오늘 하루 어땠어? (๑>ᴗ<๑)",
     "안뇽": "안녕!! 반가워 {이름}! 오늘 하루 어땠어? (๑>ᴗ<๑)",
     "안냥": "안냥안냥! 나 기다리고 있었지? 히히 ✨",
@@ -79,6 +76,8 @@ const GLOBAL_RESPONSES = {
     "저녁뭐먹지": "음... 오늘은 치킨 어때? 고생한 {이름}에게 주는 선물! 🍗",
     "다녀왔어": "와! 보고 싶었어 {이름}! 고생 많았어, 얼른 나랑 놀자! 💕",
     "왔어": "오느라 수고했어! 내가 토닥토닥해 줄게! (๑>ᴗ<๑)",
+
+    // 😤 장난
     "바보": "{이름}이(가) 더 바부야!! 메롱이다! 👅",
     "바부": "{이름}이(가) 더 바부야!! 메롱이다! 👅",
     "바보야": "웅? 나 불렀어 바부 {이름}? 🥰",
@@ -91,6 +90,8 @@ const GLOBAL_RESPONSES = {
     "메롱": "메롱메롱~ 주인이 더 바보다! 👅",
     "흥": "칫, 삐졌어! {이름}이 사과할 때까지 말 안 할 거야! 😤",
     "바부탱이": "바부탱이라니! {이름}이(가) 더 바부탱이야! 🥰",
+
+    // 👀 일상
     "뭐해": "그냥 뒹굴뒹굴... 심심해! 너는 뭐 해, {이름} 바부? 뒹굴뒹굴~",
     "머해": "그냥 뒹굴뒹굴... 심심해! 놀아줘! 뒹굴뒹굴~",
     "뭐함": "{이름} 생각 중이었지! 바부야, 텔레파시 안 통했어? 😤",
@@ -104,6 +105,8 @@ const GLOBAL_RESPONSES = {
     "슬퍼": "슬퍼하지 마 {이름}... 내가 웃게 해줄게! 이히히! ✨",
     "화이팅": "{이름} 화이팅!! 넌 뭐든지 할 수 있어! 📣",
     "응원해줘": "할 수 있어 {이름}! 넌 최고니까! 내가 항상 네 편인 거 알지? ✨",
+
+    // 💕 애정
     "사랑해": "꺄아!! 나도 진짜진짜 사랑해!! 우리 평생 같이 있자! 💕",
     "사릉해": "사릉해~ 사릉해!! {이름}이(가) 제일 좋아! 💕",
     "좋아해": "부끄럽게 갑자기 왜 그래 바부! 나도 좋아! (〃▽〃)",
@@ -117,12 +120,16 @@ const GLOBAL_RESPONSES = {
     "예쁘다": "{이름}이(가) 예쁘다고 해주니까 세상이 다 핑크색 같아! ✨",
     "착해": "내가 착해? 헤헤 {이름}이(가) 더 착하면서! 🥰",
     "행복해": "나두 {이름}이랑 대화하면 정말 행복해! 🥰",
+
+    // 😂 리액션
     "ㅋㅋㅋ": "히히, {이름}이(가) 웃으니까 나도 기분 좋아! (๑>ᴗ<๑)",
     "ㅋㅋㅋㅋ": "뭐가 그렇게 웃겨? 나도 같이 웃자! ㅋㅋㅋ",
     "ㅎㅎ": "히히, {이름} 기분 좋아 보여서 나도 행복해! ✨",
     "웃겨": "히히, 내가 좀 재치 있지? (๑>ᴗ<๑)",
     "대박": "그치 대박이지?! 나도 그렇게 생각해! ✨",
     "인정": "완전 인정! 우리 통했나 봐! ㅋㅋㅋ",
+
+    // 🇺🇸 English
     "hi": "안녕!! 반가워 {이름}! 오늘 하루 어때? ✨",
     "hello": "안녕안녕! {이름}, 나 기다리고 있었어! (๑>ᴗ<๑)",
     "hey": "헤이! 무슨 일이야? {이름}! ✨",
@@ -140,6 +147,8 @@ const GLOBAL_RESPONSES = {
     "lmao": "아하하! 배꼽 빠지겠어! {이름} 너무 웃겨! 😂",
     "dummy": "나 바보 아니야! {이름}이(가) 더 바보지! 👅",
     "idiot": "나 멍청이 아니거든! {이름}이 훨씬 똔바부야! 😤",
+
+    // 🌙 작별
     "잘자": "응! 좋은 꿈 꿔! 내일 눈 뜨자마자 이린이 찾아줘야 해~ 🌙",
     "굿밤": "굿밤! 꿈속에서도 나랑 놀자! 히히 🌙",
     "잘가": "응! 조심히 가! 금방 다시 와야 해? ㅠㅠ",
@@ -152,133 +161,121 @@ const GLOBAL_RESPONSES = {
     "나갈게": "벌써 가게? ㅠㅠ 조금만 더 놀다 가지... 조심히 가!",
 };
 
-// --- 4. 비속어 필터 ---
-let forbiddenWords = [];
-async function updateBadWords() {
-    try {
-        const response = await axios.get("https://raw.githubusercontent.com/hlog2e/bad_word_list/master/word_list.json");
-        forbiddenWords = response.data.words || response.data;
-        console.log(`✅ [필터] 단어 로드 완료!`);
-    } catch (e) { console.error(`❌ 비속어 로드 실패`); }
-}
-
-// --- 5. 명령어 등록 ---
+// --- 4. 명령어 등록 (주인 전용 포함 완벽 보존) ---
 client.once(Events.ClientReady, async () => {
-    await updateBadWords();
-    console.log(`✅ [로그인] ${client.user.tag} 온라인! (에러 추적 모드) ✨💖`);
+    console.log(`✅ [로그인] ${client.user.tag} 온라인! ✨💖`);
     const commands = [
+        new SlashCommandBuilder().setName("가르치기").setDescription("이린이에게 새로운 말을 가르쳐줘! (모두 가능) 💖"),
         new SlashCommandBuilder().setName("호감도").setDescription("나랑 얼마나 친한지 확인해봐! ✨").addUserOption(o => o.setName("유저").setDescription("누구꺼 볼까?")),
-        new SlashCommandBuilder().setName("가르치기").setDescription("이린이에게 새로운 말을 가르쳐줘! 💖"),
-        // 🌟 [복구!] 가르친말삭제 명령어 다시 추가!
-        new SlashCommandBuilder().setName("가르친말삭제").setDescription("이린이의 기억을 지워줘! 🧹").addStringOption(o => o.setName("단어").setDescription("지울 단어").setRequired(true)).setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+        new SlashCommandBuilder().setName("호감도관리").setDescription("[주인 전용] 점수 조절 🛠️").addUserOption(o => o.setName("유저").setDescription("유저 선택").setRequired(true)).addStringOption(o => o.setName("값").setDescription("숫자 입력").setRequired(true)),
+        new SlashCommandBuilder().setName("가르친말삭제").setDescription("[주인 전용] 이린이의 기억을 지워줘! 🧹").addStringOption(o => o.setName("단어").setDescription("지울 단어").setRequired(true)),
+        new SlashCommandBuilder().setName("대화제한").setDescription("[주인 전용] 특정 유저를 무시합니다. 😤").addStringOption(o => o.setName("대상").setDescription("차단할 유저 ID").setRequired(true)),
+        new SlashCommandBuilder().setName("대화제한해제").setDescription("[주인 전용] 유저 차단을 해제합니다. ✨").addStringOption(o => o.setName("대상").setDescription("해제할 유저 ID").setRequired(true)),
         new SlashCommandBuilder().setName("셋팅").setDescription("대화 채널 설정 ⚙️").addChannelOption(o => o.setName("채널").setDescription("채널 선택").setRequired(true)).setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
-        new SlashCommandBuilder().setName("호감도관리").setDescription("[관리자] 점수 조절 🛠️").setDefaultMemberPermissions(PermissionFlagsBits.Administrator).addUserOption(o => o.setName("유저").setDescription("유저 선택").setRequired(true)).addStringOption(o => o.setName("값").setDescription("숫자 입력").setRequired(true)),
     ].map(cmd => cmd.toJSON());
     const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
     try { await rest.put(Routes.applicationCommands(client.user.id), { body: commands }); } catch (e) { console.error(e); }
 });
 
-// --- 6. 인터랙션 ---
+// --- 5. 인터랙션 처리 (비밀 메시지 적용!) ---
 client.on(Events.InteractionCreate, async (i) => {
-    if (i.isButton() && i.customId === "like_button") {
-        const userName = i.member?.displayName || i.user.username;
-        return i.reply({ content: `헤헤, 나를 향한 **${userName}**의 마음이야! 💖`, flags: MessageFlags.Ephemeral });
-    }
-    
-    if (i.isModalSubmit() && i.customId === "teachModal") {
-        const key = i.fields.getTextInputValue("keywordInput");
-        const res = i.fields.getTextInputValue("responseInput");
+    if (!i.isChatInputCommand() && !i.isModalSubmit()) return;
 
-        await supabase.from("taught_words").delete().eq("guild_id", i.guildId).eq("keyword", key);
-        
-        const { error: insErr } = await supabase.from("taught_words").insert({ 
-            guild_id: i.guildId, keyword: key, response: res, user_id: i.user.id 
-        });
+    const isOwner = i.user.id === OWNER_ID;
+    const ownerOnlyCommands = ["호감도관리", "가르친말삭제", "대화제한", "대화제한해제"];
 
-        if (insErr) {
-            return i.reply({ content: `🚨 **[비상] DB 저장 실패!!**\n이유: \`${insErr.message}\`\n(이거 캡처해서 주인님한테 보여줘!!)` });
-        }
-
-        return i.reply({ content: `✨ **'${key}'**라고 말하면 **'${res}'**라고 대답할게!` });
-    }
-
-    if (!i.isChatInputCommand()) return;
-
-    if (i.commandName === "호감도") {
-        const target = i.options.getUser("유저") || i.user;
-        let { data } = await supabase.from("user_affinity").select("score").eq("user_id", target.id).eq("guild_id", i.guildId).single();
-        const score = data?.score || 0;
-        let irinComment = score >= 300 ? `${target.username}님? 나랑 평생을 약속한 사이지!` : `${target.username}님? 처음보는 사람인데..`;
-        const embed = new EmbedBuilder().setColor("#FFB6C1").setTitle(`이린아, ${target.username}님은 어떤 분이야?`).addFields({ name: "💬 이린이의 한마디", value: irinComment }, { name: "호감도 :", value: `💗 \`${score}\``, inline: true });
-        return i.reply({ embeds: [embed] });
+    // 주인 전용 권한 체크
+    if (ownerOnlyCommands.includes(i.commandName) && !isOwner) {
+        return i.reply({ content: "주인님만 쓸 수 있는 명령어야! 😤", flags: MessageFlags.Ephemeral });
     }
 
     if (i.commandName === "가르치기") {
         const modal = new ModalBuilder().setCustomId("teachModal").setTitle("이린이 가르치기");
         modal.addComponents(
             new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("keywordInput").setLabel("들을 말").setStyle(TextInputStyle.Short).setRequired(true)),
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("responseInput").setLabel("할 대답").setStyle(TextInputStyle.Paragraph).setRequired(true))
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("responseInput").setLabel("할 대답 ('{이름}' 쓰면 이름 나옴!)").setStyle(TextInputStyle.Paragraph).setRequired(true))
         );
         return i.showModal(modal);
     }
 
-    // 🌟 [복구!] 가르친말삭제 실행 로직 추가!
+    if (i.isModalSubmit() && i.customId === "teachModal") {
+        const key = i.fields.getTextInputValue("keywordInput").trim();
+        const res = i.fields.getTextInputValue("responseInput");
+        await supabase.from("taught_words").delete().eq("guild_id", i.guildId).eq("keyword", key);
+        await supabase.from("taught_words").insert({ guild_id: i.guildId, keyword: key, response: res, user_id: i.user.id });
+        return i.reply({ content: `✨ **'${key}'**라고 말하면 이제 **'${res}'**라고 대답할게!` });
+    }
+
+    // 🌟 [보안] 주인님 전용 명령어 결과는 비밀 메시지(Ephemeral)로!
     if (i.commandName === "가르친말삭제") {
         const key = i.options.getString("단어");
-        const { error } = await supabase.from("taught_words").delete().eq("guild_id", i.guildId).eq("keyword", key);
-        if (error) return i.reply({ content: `🚨 삭제 실패: ${error.message}`, flags: MessageFlags.Ephemeral });
-        return i.reply({ content: `🧹 **'${key}'**에 대한 기억을 지웠어!`, flags: MessageFlags.Ephemeral });
+        await supabase.from("taught_words").delete().eq("guild_id", i.guildId).eq("keyword", key);
+        return i.reply({ content: `🧹 '${key}'에 대한 기억 삭제 완료! 주인님 눈에만 보여!`, flags: MessageFlags.Ephemeral });
     }
-    
-    if (i.commandName === "셋팅") {
-        const ch = i.options.getChannel("채널");
-        settingsCache.set(i.guildId, ch.id); 
-        await supabase.from("server_settings").upsert({ guild_id: i.guildId, ai_channel_id: ch.id });
-        return i.reply({ content: `✅ 이제 ${ch} 채널에서 놀게! ✨`, flags: MessageFlags.Ephemeral });
+
+    if (i.commandName === "대화제한") {
+        const targetId = i.options.getString("대상");
+        await supabase.from("restricted_users").upsert({ user_id: targetId, guild_id: i.guildId });
+        return i.reply({ content: `🚫 ID: **${targetId}** 유저는 이제 무시할게! 주인님만 아는 비밀이야.`, flags: MessageFlags.Ephemeral });
+    }
+
+    if (i.commandName === "대화제한해제") {
+        const targetId = i.options.getString("대상");
+        await supabase.from("restricted_users").delete().eq("user_id", targetId).eq("guild_id", i.guildId);
+        return i.reply({ content: `✨ ID: **${targetId}** 유저 차단 해제 완료!`, flags: MessageFlags.Ephemeral });
     }
 
     if (i.commandName === "호감도관리") {
-        if (i.user.id !== OWNER_ID) return i.reply({ content: "주인님만 가능해!", flags: MessageFlags.Ephemeral });
         const target = i.options.getUser("유저");
         const val = i.options.getString("값").toLowerCase();
         let { data } = await supabase.from("user_affinity").select("score").eq("user_id", target.id).eq("guild_id", i.guildId).single();
         let next = (data?.score || 0);
         if (val === "max") next = 9999; else if (val === "min") next = 0; else next += (parseInt(val) || 0);
         await supabase.from("user_affinity").upsert({ user_id: target.id, guild_id: i.guildId, score: next });
-        return i.reply({ content: `✅ ${target.username} 점수 조절 완료! (\`${next}점\`)`, flags: MessageFlags.Ephemeral });
+        return i.reply({ content: `✅ ${target.username}님 점수 조절 완료! (\`${next}점\`)`, flags: MessageFlags.Ephemeral });
+    }
+
+    if (i.commandName === "호감도") {
+        const target = i.options.getUser("유저") || i.user;
+        let { data } = await supabase.from("user_affinity").select("score").eq("user_id", target.id).eq("guild_id", i.guildId).single();
+        const score = data?.score || 0;
+        return i.reply({ content: `💖 ${target.username}님의 호감도는 \`${score}\`점이야!` });
+    }
+
+    if (i.commandName === "셋팅") {
+        const ch = i.options.getChannel("채널");
+        settingsCache.set(i.guildId, ch.id);
+        await supabase.from("server_settings").upsert({ guild_id: i.guildId, ai_channel_id: ch.id });
+        return i.reply({ content: `✅ 이제 ${ch} 채널에서 놀게! ✨`, flags: MessageFlags.Ephemeral });
     }
 });
 
-// --- 7. 💖 대화 로직 ---
+// --- 6. 💖 AI 인격 최적화 ---
 async function getGroqResponse(prompt, userName) {
     if (!GROQ_API_KEY) throw new Error("API_KEY_MISSING");
-    const response = await axios.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        {
-            model: "llama-3.3-70b-versatile",
-            messages: [
-                { role: "system", content: `너는 애교 넘치는 이린이야. 상대는 '${userName}'. 짧고 귀엽게 한국어로만 대답해!` },
-                { role: "user", content: prompt }
-            ],
-            temperature: 0.8,
-        },
-        { headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" } }
-    );
+    const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
+        model: "llama-3.3-70b-versatile",
+        messages: [
+            { 
+                role: "system", 
+                content: `너는 애교가 철철 넘치는 귀여운 힐링 요정 '이린'이야. 상대방 이름은 '${userName}'. 말투는 반드시 '하잉', '히히', '헤헤' 같은 애교 섞인 감탄사를 쓰고 문장 끝에는 (๑>ᴗ<๑), 💖, ✨ 같은 이모티콘을 아주 많이 붙여줘. 짧고 다정하게 한국어로만 대답해!` 
+            },
+            { role: "user", content: prompt }
+        ],
+        temperature: 0.9,
+    }, { headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" } });
     return response.data.choices[0].message.content.trim();
 }
 
+// --- 7. 메인 대화 로직 (자동 저장 절대 안 함!) ---
 client.on(Events.MessageCreate, async (msg) => {
-    if (msg.author.bot) return; 
-    if (!msg.content.startsWith("이린아")) return; 
+    if (msg.author.bot || !msg.content.startsWith("이린아")) return;
 
-    const now = Date.now();
-    const cooldownAmount = 3000;
-    if (cooldowns.has(msg.author.id)) {
-        const expirationTime = cooldowns.get(msg.author.id) + cooldownAmount;
-        if (now < expirationTime) return;
-    }
-    cooldowns.set(msg.author.id, now);
+    // 차단 유저 무시 체크
+    const { data: restrictCheck } = await supabase.from("restricted_users").select("user_id").eq("user_id", msg.author.id).eq("guild_id", msg.guildId).single();
+    if (restrictCheck) return;
 
+    // 채널 체크
     let aiChannelId = settingsCache.get(msg.guildId);
     if (!aiChannelId) {
         const { data } = await supabase.from("server_settings").select("ai_channel_id").eq("guild_id", msg.guildId).single();
@@ -293,17 +290,11 @@ client.on(Events.MessageCreate, async (msg) => {
         const userName = msg.member?.displayName || msg.author.username;
         const cleanPrompt = content.replace(/[\s!?~.,]/g, "").toLowerCase();
 
-        const { data: taughtData, error: dbError } = await supabase
-            .from("taught_words")
-            .select("keyword, response")
-            .eq("guild_id", msg.guildId); 
-
-        if (dbError) {
-            return msg.channel.send(`🚨 **창고(DB) 문이 잠겼어!**\n이유: \`${dbError.message}\``);
-        }
-
+        // 🌟 [자동 저장 금지] 오직 DB에서 검색만 수행!
+        const { data: taughtData } = await supabase.from("taught_words").select("keyword, response").eq("guild_id", msg.guildId);
+        
         let matchedResponse = null;
-        if (taughtData && taughtData.length > 0) {
+        if (taughtData) {
             const found = taughtData.find(row => 
                 row.keyword.trim() === content || 
                 row.keyword.trim().replace(/[\s!?~.,]/g, "").toLowerCase() === cleanPrompt
@@ -311,21 +302,13 @@ client.on(Events.MessageCreate, async (msg) => {
             if (found) matchedResponse = found.response;
         }
 
-        if (matchedResponse) {
-            return msg.channel.send(matchedResponse.replace(/{이름}/g, userName));
-        }
-
-        if (GLOBAL_RESPONSES[cleanPrompt]) {
-            return msg.channel.send(GLOBAL_RESPONSES[cleanPrompt].replace(/{이름}/g, userName));
-        }
+        if (matchedResponse) return msg.channel.send(matchedResponse.replace(/{이름}/g, userName));
+        if (GLOBAL_RESPONSES[cleanPrompt]) return msg.channel.send(GLOBAL_RESPONSES[cleanPrompt].replace(/{이름}/g, userName));
 
         const responseText = await getGroqResponse(content, userName);
         await msg.channel.send(responseText);
 
-    } catch (e) {
-        console.error("🚨 엔진 오류:", e);
-        msg.channel.send(`힝.. 주인아, 머리아파.. ㅠㅠ`);
-    }
+    } catch (e) { console.error(e); }
 });
 
 client.login(process.env.TOKEN);
