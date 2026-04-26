@@ -19,12 +19,13 @@ const { createClient } = require("@supabase/supabase-js");
 const express = require("express");
 const axios = require("axios");
 
-// --- 1. 웹 서버 및 초기 설정 ---
+// --- 1. Render/업타임 로봇 생존용 웹 서버 ---
 const app = express();
-app.get("/", (req, res) => res.status(200).send("이린이 무생략 풀스펙 가동 중! ⚡💖"));
+app.get("/", (req, res) => res.status(200).send("이린이 이모티콘 다이어트 & 무생략 복구 완료! ⚡💖"));
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, "0.0.0.0", () => console.log(`✅ [서버] 포트 가동!`));
 
+// --- 2. 시스템 초기 설정 ---
 const OWNER_ID = process.env.OWNER_ID;
 const rawUrl = process.env.SUPABASE_URL || "";
 const SUPABASE_URL = rawUrl.split('/rest/v1')[0].replace(/\/$/, ""); 
@@ -40,7 +41,7 @@ const client = new Client({
 const settingsCache = new Map();
 const cooldowns = new Map(); 
 
-// 🌟 [추가] 받침 유무 판별 및 조사 변환 함수
+// 🌟 [조사 변환] 받침 유무 판별 및 조사 변환 함수
 function addJosa(name, type) {
     const lastChar = name.charCodeAt(name.length - 1);
     const hasBatchim = (lastChar - 0xAC00) % 28 > 0;
@@ -50,7 +51,7 @@ function addJosa(name, type) {
     return name;
 }
 
-// --- 2. 👑 초대형 전역 스타터팩 (100% 무생략 복구!) ---
+// --- 3. 👑 초대형 전역 스타터팩 (100% 무생략 복구!) ---
 const GLOBAL_RESPONSES = {
     // 🆔 정체성
     "너는누구야": "난 이린이라구! {이름}의 하나뿐인 귀염둥이 AI야! ✨",
@@ -276,8 +277,9 @@ client.on(Events.InteractionCreate, async (i) => {
     }
 });
 
-// --- 6. 💖 AI 인격 최적화 (한자 절대 금지!) ---
+// --- 6. 💖 AI 인격 최적화 (이모티콘 남발 & 겹치는 대화 방지 로직 추가!) ---
 async function getGroqResponse(prompt, userName) {
+    if (!GROQ_API_KEY) throw new Error("API_KEY_MISSING");
     const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
         model: "llama-3.3-70b-versatile",
         messages: [
@@ -285,17 +287,23 @@ async function getGroqResponse(prompt, userName) {
                 role: "system", 
                 content: `너는 애교가 철철 넘치는 귀여운 힐링 요정 '이린'이야. 상대방 이름은 '${userName}'. 
                 
-                [반드시 지켜야 할 지침]
-                1. 절대로 한자(Chinese Characters)를 사용하지 마. 오직 한글과 이모티콘만 사용해.
-                2. 말투는 반드시 '하잉', '히히', '헤헤' 같은 애교 섞인 감탄사를 쓰고 아주 다정하게 대답해.
-                3. 문장 끝에는 (๑>ᴗ<๑), 💖, ✨ 같은 이모티콘을 아주 많이 붙여줘. 
-                4. 기계적인 말투는 금지! 친구처럼 따뜻하고 애교 있게 한국어로만 대답해!` 
+                [엄격한 지침 - 반드시 지킬 것]
+                1. 한국어만 사용: 절대로 한자(Chinese Characters)를 사용하지 마.
+                2. 이모티콘 절제: 문장 끝에 이모티콘은 딱 1개만 써. 절대 여러 개를 나열하지 마. (남발 금지)
+                3. 중복 표현 금지: '하잉', '히히' 같은 감탄사는 한 번만 사용해. 문장마다 반복하지 마. (겹치는 대화 금지)
+                4. 자연스러운 대화: 기계적인 반복 대신 친구와 수다 떨듯 다양하게 표현해줘. 문장 끝에는 (๑>ᴗ<๑), 💖, ✨ 중 하나만 골라 써.` 
             },
             { role: "user", content: prompt }
         ],
-        temperature: 0.8,
-    }, { headers: { "Authorization": `Bearer ${GROQ_API_KEY}` } });
-    return response.data.choices[0].message.content.trim();
+        temperature: 0.7, // 🌟 더 일관성 있는 답변을 위해 0.7로 조정
+    }, { headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" } });
+    
+    let result = response.data.choices[0].message.content.trim();
+    
+    // 🌟 [추가 로직] 이모티콘이 3개 이상 연속되면 강제로 1개로 줄임
+    result = result.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]){2,}/g, '$1');
+    
+    return result;
 }
 
 // --- 7. 메인 대화 로직 (조사 자동 변환 엔진 탑재!) ---
