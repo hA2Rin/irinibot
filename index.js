@@ -19,13 +19,12 @@ const { createClient } = require("@supabase/supabase-js");
 const express = require("express");
 const axios = require("axios");
 
-// --- 1. Render/업타임 로봇 생존용 웹 서버 ---
+// --- 1. 웹 서버 및 초기 설정 ---
 const app = express();
-app.get("/", (req, res) => res.status(200).send("이린이 투명 망토 장착 완료! ⚡💖"));
+app.get("/", (req, res) => res.status(200).send("이린이 무생략 풀스펙 가동 중! ⚡💖"));
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, "0.0.0.0", () => console.log(`✅ [서버] 포트 가동!`));
 
-// --- 2. 시스템 초기 설정 ---
 const OWNER_ID = process.env.OWNER_ID;
 const rawUrl = process.env.SUPABASE_URL || "";
 const SUPABASE_URL = rawUrl.split('/rest/v1')[0].replace(/\/$/, ""); 
@@ -41,7 +40,17 @@ const client = new Client({
 const settingsCache = new Map();
 const cooldowns = new Map(); 
 
-// --- 3. 👑 초대형 전역 스타터팩 (100% 무생략 복구) ---
+// 🌟 [추가] 받침 유무 판별 및 조사 변환 함수
+function addJosa(name, type) {
+    const lastChar = name.charCodeAt(name.length - 1);
+    const hasBatchim = (lastChar - 0xAC00) % 28 > 0;
+    if (type === "이/가") return hasBatchim ? `${name}이가` : `${name}가`;
+    if (type === "은/는") return hasBatchim ? `${name}이는` : `${name}는`;
+    if (type === "을/를") return hasBatchim ? `${name}이를` : `${name}를`;
+    return name;
+}
+
+// --- 2. 👑 초대형 전역 스타터팩 (100% 무생략 복구!) ---
 const GLOBAL_RESPONSES = {
     // 🆔 정체성
     "너는누구야": "난 이린이라구! {이름}의 하나뿐인 귀염둥이 AI야! ✨",
@@ -109,6 +118,7 @@ const GLOBAL_RESPONSES = {
     // 💕 애정
     "사랑해": "꺄아!! 나도 진짜진짜 사랑해!! 우리 평생 같이 있자! 💕",
     "사릉해": "사릉해~ 사릉해!! {이름}이(가) 제일 좋아! 💕",
+    "사룽냐": "나두 사랑해~~! {이름}이 최고야! 💖",
     "좋아해": "부끄럽게 갑자기 왜 그래 바부! 나도 좋아! (〃▽〃)",
     "조아해": "나두 나두! 세상에서 {이름}이 제일 좋아! ✨",
     "너좋아": "히히, 나도 {이름}이(가) 제일 좋아! ✨",
@@ -161,30 +171,30 @@ const GLOBAL_RESPONSES = {
     "나갈게": "벌써 가게? ㅠㅠ 조금만 더 놀다 가지... 조심히 가!",
 };
 
-// --- 4. 명령어 등록 (🌟목록 숨김 기능 탑재!) ---
+// --- 4. 명령어 등록 (🌟목록 숨김 + 비밀 권한 완벽 적용!) ---
 client.once(Events.ClientReady, async () => {
     console.log(`✅ [로그인] ${client.user.tag} 온라인! ✨💖`);
     const commands = [
         new SlashCommandBuilder().setName("가르치기").setDescription("이린이에게 새로운 말을 가르쳐줘! (모두 가능) 💖"),
         new SlashCommandBuilder().setName("호감도").setDescription("나랑 얼마나 친한지 확인해봐! ✨").addUserOption(o => o.setName("유저").setDescription("누구꺼 볼까?")),
         
-        // 🤫 [주인/관리자 전용] 일반 유저 목록에서는 숨김!
+        // 🤫 [주인 전용] 일반 유저 목록에서는 숨김!
         new SlashCommandBuilder().setName("호감도관리").setDescription("[주인 전용] 점수 조절 🛠️")
             .addUserOption(o => o.setName("유저").setDescription("유저 선택").setRequired(true))
             .addStringOption(o => o.setName("값").setDescription("숫자 입력").setRequired(true))
-            .setDefaultMemberPermissions(PermissionFlagsBits.Administrator), // 관리자 아니면 안보임
+            .setDefaultMemberPermissions(0), 
             
         new SlashCommandBuilder().setName("가르친말삭제").setDescription("[주인 전용] 이린이의 기억을 지워줘! 🧹")
             .addStringOption(o => o.setName("단어").setDescription("지울 단어").setRequired(true))
-            .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+            .setDefaultMemberPermissions(0),
             
         new SlashCommandBuilder().setName("대화제한").setDescription("[주인 전용] 특정 유저를 무시합니다. 😤")
             .addStringOption(o => o.setName("대상").setDescription("차단할 유저 ID").setRequired(true))
-            .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+            .setDefaultMemberPermissions(0),
             
         new SlashCommandBuilder().setName("대화제한해제").setDescription("[주인 전용] 유저 차단을 해제합니다. ✨")
             .addStringOption(o => o.setName("대상").setDescription("해제할 유저 ID").setRequired(true))
-            .setDefaultMemberPermissions(PermissionFlagsBits.Administrator),
+            .setDefaultMemberPermissions(0),
             
         new SlashCommandBuilder().setName("셋팅").setDescription("대화 채널 설정 ⚙️")
             .addChannelOption(o => o.setName("채널").setDescription("채널 선택").setRequired(true))
@@ -195,14 +205,13 @@ client.once(Events.ClientReady, async () => {
     try { await rest.put(Routes.applicationCommands(client.user.id), { body: commands }); } catch (e) { console.error(e); }
 });
 
-// --- 5. 인터랙션 처리 ---
+// --- 5. 인터랙션 처리 (무생략 복구 완료!) ---
 client.on(Events.InteractionCreate, async (i) => {
     if (!i.isChatInputCommand() && !i.isModalSubmit()) return;
 
     const isOwner = i.user.id === OWNER_ID;
     const ownerOnlyCommands = ["호감도관리", "가르친말삭제", "대화제한", "대화제한해제"];
 
-    // 주인 권한 체크 (한번 더 확실하게!)
     if (ownerOnlyCommands.includes(i.commandName) && !isOwner) {
         return i.reply({ content: "주인님만 쓸 수 있는 명령어야! 😤", flags: MessageFlags.Ephemeral });
     }
@@ -211,7 +220,7 @@ client.on(Events.InteractionCreate, async (i) => {
         const modal = new ModalBuilder().setCustomId("teachModal").setTitle("이린이 가르치기");
         modal.addComponents(
             new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("keywordInput").setLabel("들을 말").setStyle(TextInputStyle.Short).setRequired(true)),
-            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("responseInput").setLabel("할 대답 ('{이름}' 쓰면 이름 나옴!)").setStyle(TextInputStyle.Paragraph).setRequired(true))
+            new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId("responseInput").setLabel("할 대답 ('{이름}은/는' 등 사용 가능!)").setStyle(TextInputStyle.Paragraph).setRequired(true))
         );
         return i.showModal(modal);
     }
@@ -233,7 +242,7 @@ client.on(Events.InteractionCreate, async (i) => {
     if (i.commandName === "대화제한") {
         const targetId = i.options.getString("대상");
         await supabase.from("restricted_users").upsert({ user_id: targetId, guild_id: i.guildId });
-        return i.reply({ content: `🚫 ID: **${targetId}** 유저를 차단했어! (주인님만 보임)`, flags: MessageFlags.Ephemeral });
+        return i.reply({ content: `🚫 ID: **${targetId}** 유저를 차단했어!`, flags: MessageFlags.Ephemeral });
     }
 
     if (i.commandName === "대화제한해제") {
@@ -267,24 +276,29 @@ client.on(Events.InteractionCreate, async (i) => {
     }
 });
 
-// --- 6. 💖 AI 인격 최적화 ---
+// --- 6. 💖 AI 인격 최적화 (한자 절대 금지!) ---
 async function getGroqResponse(prompt, userName) {
-    if (!GROQ_API_KEY) throw new Error("API_KEY_MISSING");
     const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
         model: "llama-3.3-70b-versatile",
         messages: [
             { 
                 role: "system", 
-                content: `너는 애교가 철철 넘치는 귀여운 힐링 요정 '이린'이야. 상대방 이름은 '${userName}'. 말투는 반드시 '하잉', '히히', '헤헤' 같은 애교 섞인 감탄사를 쓰고 문장 끝에는 (๑>ᴗ<๑), 💖, ✨ 같은 이모티콘을 아주 많이 붙여줘. 짧고 다정하게 한국어로만 대답해!` 
+                content: `너는 애교가 철철 넘치는 귀여운 힐링 요정 '이린'이야. 상대방 이름은 '${userName}'. 
+                
+                [반드시 지켜야 할 지침]
+                1. 절대로 한자(Chinese Characters)를 사용하지 마. 오직 한글과 이모티콘만 사용해.
+                2. 말투는 반드시 '하잉', '히히', '헤헤' 같은 애교 섞인 감탄사를 쓰고 아주 다정하게 대답해.
+                3. 문장 끝에는 (๑>ᴗ<๑), 💖, ✨ 같은 이모티콘을 아주 많이 붙여줘. 
+                4. 기계적인 말투는 금지! 친구처럼 따뜻하고 애교 있게 한국어로만 대답해!` 
             },
             { role: "user", content: prompt }
         ],
-        temperature: 0.9,
-    }, { headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" } });
+        temperature: 0.8,
+    }, { headers: { "Authorization": `Bearer ${GROQ_API_KEY}` } });
     return response.data.choices[0].message.content.trim();
 }
 
-// --- 7. 메인 대화 로직 (자동 저장 절대 안 함!) ---
+// --- 7. 메인 대화 로직 (조사 자동 변환 엔진 탑재!) ---
 client.on(Events.MessageCreate, async (msg) => {
     if (msg.author.bot || !msg.content.startsWith("이린아")) return;
 
@@ -298,31 +312,29 @@ client.on(Events.MessageCreate, async (msg) => {
     }
     if (msg.channel.id !== aiChannelId) return;
 
+    const userName = msg.member?.displayName || msg.author.username;
+    const processJosa = (text) => {
+        return text
+            .replace(/{이름}이\/가/g, addJosa(userName, "이/가"))
+            .replace(/{이름}은\/는/g, addJosa(userName, "은/는"))
+            .replace(/{이름}을\/를/g, addJosa(userName, "을/를"))
+            .replace(/{이름}/g, userName);
+    };
+
     const content = msg.content.replace(/^이린아[!\s]*/, "").trim();
     if (!content) return msg.channel.send("웅? 왜 불러~? (๑>ᴗ<๑)");
 
+    const cleanPrompt = content.replace(/[\s!?~.,]/g, "").toLowerCase();
+
     try {
-        const userName = msg.member?.displayName || msg.author.username;
-        const cleanPrompt = content.replace(/[\s!?~.,]/g, "").toLowerCase();
-
-        // [검색만 수행]
         const { data: taughtData } = await supabase.from("taught_words").select("keyword, response").eq("guild_id", msg.guildId);
-        
-        let matchedResponse = null;
-        if (taughtData) {
-            const found = taughtData.find(row => 
-                row.keyword.trim() === content || 
-                row.keyword.trim().replace(/[\s!?~.,]/g, "").toLowerCase() === cleanPrompt
-            );
-            if (found) matchedResponse = found.response;
-        }
+        let matched = taughtData?.find(row => row.keyword.trim() === content || row.keyword.trim().replace(/[\s!?~.,]/g, "").toLowerCase() === cleanPrompt);
 
-        if (matchedResponse) return msg.channel.send(matchedResponse.replace(/{이름}/g, userName));
-        if (GLOBAL_RESPONSES[cleanPrompt]) return msg.channel.send(GLOBAL_RESPONSES[cleanPrompt].replace(/{이름}/g, userName));
+        if (matched) return msg.channel.send(processJosa(matched.response));
+        if (GLOBAL_RESPONSES[cleanPrompt]) return msg.channel.send(processJosa(GLOBAL_RESPONSES[cleanPrompt]));
 
-        const responseText = await getGroqResponse(content, userName);
-        await msg.channel.send(responseText);
-
+        const aiRes = await getGroqResponse(content, userName);
+        msg.channel.send(processJosa(aiRes));
     } catch (e) { console.error(e); }
 });
 
