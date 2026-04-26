@@ -21,7 +21,7 @@ const axios = require("axios");
 
 // --- 1. Render/업타임 로봇 생존용 웹 서버 ---
 const app = express();
-app.get("/", (req, res) => res.status(200).send("이린이 이모티콘 다이어트 & 무생략 복구 완료! ⚡💖"));
+app.get("/", (req, res) => res.status(200).send("이린이 무생략 풀스펙 가동 중! ⚡💖"));
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, "0.0.0.0", () => console.log(`✅ [서버] 포트 가동!`));
 
@@ -41,7 +41,7 @@ const client = new Client({
 const settingsCache = new Map();
 const cooldowns = new Map(); 
 
-// 🌟 [조사 변환] 받침 유무 판별 및 조사 변환 함수
+// 🌟 [추가] 받침 유무 판별 및 조사 변환 함수
 function addJosa(name, type) {
     const lastChar = name.charCodeAt(name.length - 1);
     const hasBatchim = (lastChar - 0xAC00) % 28 > 0;
@@ -277,7 +277,7 @@ client.on(Events.InteractionCreate, async (i) => {
     }
 });
 
-// --- 6. 💖 AI 인격 최적화 (이모티콘 남발 & 겹치는 대화 방지 로직 추가!) ---
+// --- 6. 💖 AI 인격 최적화 (이모티콘 남발/겹치는 대화/한자 원천 차단!) ---
 async function getGroqResponse(prompt, userName) {
     if (!GROQ_API_KEY) throw new Error("API_KEY_MISSING");
     const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
@@ -287,20 +287,20 @@ async function getGroqResponse(prompt, userName) {
                 role: "system", 
                 content: `너는 애교가 철철 넘치는 귀여운 힐링 요정 '이린'이야. 상대방 이름은 '${userName}'. 
                 
-                [엄격한 지침 - 반드시 지킬 것]
+                [지침 - 반드시 엄수할 것]
                 1. 한국어만 사용: 절대로 한자(Chinese Characters)를 사용하지 마.
-                2. 이모티콘 절제: 문장 끝에 이모티콘은 딱 1개만 써. 절대 여러 개를 나열하지 마. (남발 금지)
-                3. 중복 표현 금지: '하잉', '히히' 같은 감탄사는 한 번만 사용해. 문장마다 반복하지 마. (겹치는 대화 금지)
-                4. 자연스러운 대화: 기계적인 반복 대신 친구와 수다 떨듯 다양하게 표현해줘. 문장 끝에는 (๑>ᴗ<๑), 💖, ✨ 중 하나만 골라 써.` 
+                2. 이모티콘 남발 금지: 문장 끝에 이모티콘은 딱 1개만 써. 절대 2개 이상 나열하지 마.
+                3. 중복 대화 금지: '하잉', '히히' 같은 감탄사를 한 문장에서 여러 번 쓰거나 대답마다 반복하지 마.
+                4. 다양성: 친구와 수다 떨듯 자연스럽게 대답해줘. 기계적인 반복은 절대 금지야.` 
             },
             { role: "user", content: prompt }
         ],
-        temperature: 0.7, // 🌟 더 일관성 있는 답변을 위해 0.7로 조정
+        temperature: 0.7, // 🌟 일관성을 위해 온도를 살짝 낮춤
     }, { headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" } });
     
     let result = response.data.choices[0].message.content.trim();
     
-    // 🌟 [추가 로직] 이모티콘이 3개 이상 연속되면 강제로 1개로 줄임
+    // 🌟 [강력 필터] 만약 AI가 지침을 어기고 이모티콘을 2개 이상 붙여 보내면 강제로 1개로 줄임
     result = result.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]){2,}/g, '$1');
     
     return result;
