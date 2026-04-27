@@ -21,7 +21,7 @@ const axios = require("axios");
 
 // --- 1. Render/업타임 로봇 생존용 웹 서버 ---
 const app = express();
-app.get("/", (req, res) => res.status(200).send("이린이 무생략 풀스펙 가동 중! ⚡💖"));
+app.get("/", (req, res) => res.status(200).send("이린이 한국어 전용 무생략 모드 가동! ⚡💖"));
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, "0.0.0.0", () => console.log(`✅ [서버] 포트 가동!`));
 
@@ -41,7 +41,7 @@ const client = new Client({
 const settingsCache = new Map();
 const cooldowns = new Map(); 
 
-// 🌟 [추가] 받침 유무 판별 및 조사 변환 함수
+// 🌟 [조사 변환] 받침 유무 판별 및 조사 변환 함수
 function addJosa(name, type) {
     const lastChar = name.charCodeAt(name.length - 1);
     const hasBatchim = (lastChar - 0xAC00) % 28 > 0;
@@ -51,7 +51,7 @@ function addJosa(name, type) {
     return name;
 }
 
-// --- 3. 👑 초대형 전역 스타터팩 (100% 무생략 복구!) ---
+// --- 3. 👑 초대형 전역 스타터팩 (100% 무생략 복구 + 머행 추가!) ---
 const GLOBAL_RESPONSES = {
     // 🆔 정체성
     "너는누구야": "난 이린이라구! {이름}의 하나뿐인 귀염둥이 AI야! ✨",
@@ -104,6 +104,7 @@ const GLOBAL_RESPONSES = {
     // 👀 일상
     "뭐해": "그냥 뒹굴뒹굴... 심심해! 너는 뭐 해, {이름} 바부? 뒹굴뒹굴~",
     "머해": "그냥 뒹굴뒹굴... 심심해! 놀아줘! 뒹굴뒹굴~",
+    "머행": "그냥 뒹굴뒹굴... 심심해! 너는 뭐 해, {이름} 바부? 뒹굴뒹굴~", // 🌟 주인님의 머행 대답!
     "뭐함": "{이름} 생각 중이었지! 바부야, 텔레파시 안 통했어? 😤",
     "심심해": "이린이랑 수다 떨면 시간 금방 갈걸?! ㅋㅋㅋ 놀아줘!",
     "놀아줘": "좋아!! 우리 무슨 얘기 할까? {이름}이 좋아하는 거 알려줘! ✨",
@@ -277,7 +278,7 @@ client.on(Events.InteractionCreate, async (i) => {
     }
 });
 
-// --- 6. 💖 AI 인격 최적화 (이모티콘 남발/겹치는 대화/한자 원천 차단!) ---
+// --- 6. 💖 AI 인격 최적화 (이모티콘 남발/중복/모든 외국어 원천 차단!) ---
 async function getGroqResponse(prompt, userName) {
     if (!GROQ_API_KEY) throw new Error("API_KEY_MISSING");
     const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
@@ -287,23 +288,26 @@ async function getGroqResponse(prompt, userName) {
                 role: "system", 
                 content: `너는 애교가 철철 넘치는 귀여운 힐링 요정 '이린'이야. 상대방 이름은 '${userName}'. 
                 
-                [지침 - 반드시 엄수할 것]
-                1. 한국어만 사용: 절대로 한자(Chinese Characters)를 사용하지 마.
-                2. 이모티콘 남발 금지: 문장 끝에 이모티콘은 딱 1개만 써. 절대 2개 이상 나열하지 마.
-                3. 중복 대화 금지: '하잉', '히히' 같은 감탄사를 한 문장에서 여러 번 쓰거나 대답마다 반복하지 마.
-                4. 다양성: 친구와 수다 떨듯 자연스럽게 대답해줘. 기계적인 반복은 절대 금지야.` 
+                [초비상 절대 엄수 지침]
+                1. 오직 한국어만 사용: 한자, 일본어, 프랑스어, 러시아어 등 모든 외국어 절대 금지. (예: '話', 'ボ', 'Oui', 'Привет' 등 발견 즉시 삭제)
+                2. 이모티콘은 문장 끝에 딱 1개만 사용: 절대 2개 이상 나열하거나 남발하지 마.
+                3. 중복 표현 금지: '하잉', '히히' 등은 문장에 한 번만 써. 대답마다 반복하지 마.
+                4. 친구처럼 다양하고 다정한 한국어 문장으로 대답해줘.` 
             },
             { role: "user", content: prompt }
         ],
-        temperature: 0.7, // 🌟 일관성을 위해 온도를 살짝 낮춤
+        temperature: 0.6, // 🌟 일관성을 위해 0.6으로 하향
     }, { headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" } });
     
     let result = response.data.choices[0].message.content.trim();
     
-    // 🌟 [강력 필터] 만약 AI가 지침을 어기고 이모티콘을 2개 이상 붙여 보내면 강제로 1개로 줄임
+    // 🌟 [강력 하드웨어 필터] 한자, 일본어, 키릴 문자, 기타 외국어 특수 기호 물리적 제거
+    result = result.replace(/[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\u0400-\u04FF\u00C0-\u017F]/g, '');
+    
+    // 🌟 이모티콘 2개 이상 연속 시 1개로 강제 압축
     result = result.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]){2,}/g, '$1');
     
-    return result;
+    return result || "웅? 한국어로 다시 예쁘게 말해줘! ✨";
 }
 
 // --- 7. 메인 대화 로직 (조사 자동 변환 엔진 탑재!) ---
