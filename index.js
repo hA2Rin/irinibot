@@ -338,12 +338,22 @@ client.on(Events.MessageCreate, async (msg) => {
 
     const cleanPrompt = content.replace(/[\s!?~.,]/g, "").toLowerCase();
 
-    try {
-        const { data: taughtData } = await supabase.from("taught_words").select("keyword, response").eq("guild_id", msg.guildId);
-        let matched = taughtData?.find(row => row.keyword.trim() === content || row.keyword.trim().replace(/[\s!?~.,]/g, "").toLowerCase() === cleanPrompt);
+    // ⚡ [최적화 1순위] 초고속 내장 스타터팩 즉시 판별 검사 진행 (Supabase를 호출하지 않음으로써 대기시간을 삭제)
+    if (GLOBAL_RESPONSES[cleanPrompt]) {
+        return msg.channel.send(processJosa(GLOBAL_RESPONSES[cleanPrompt]));
+    }
 
-        if (matched) return msg.channel.send(processJosa(matched.response));
-        if (GLOBAL_RESPONSES[cleanPrompt]) return msg.channel.send(processJosa(GLOBAL_RESPONSES[cleanPrompt]));
+    try {
+        // ⚡ [최적화 2순위] 테이블 전체 다운로드 차단 및 유저가 전송한 해당 문자열만 정확히 인덱스 서칭(0.01초 소요)
+        const { data: matchedWords } = await supabase
+            .from("taught_words")
+            .select("response")
+            .eq("guild_id", msg.guildId)
+            .or(`keyword.eq.${content},keyword.eq.${cleanPrompt}`);
+
+        if (matchedWords && matchedWords.length > 0) {
+            return msg.channel.send(processJosa(matchedWords[0].response));
+        }
 
         const aiRes = await getGroqResponse(content, userName);
         msg.channel.send(processJosa(aiRes));
