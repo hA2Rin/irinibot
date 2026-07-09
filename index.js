@@ -207,7 +207,7 @@ client.once(Events.ClientReady, async () => {
     try { await rest.put(Routes.applicationCommands(client.user.id), { body: commands }); } catch (e) { console.error(e); }
 });
 
-// --- 5. 인터랙션 처리 (무생략 복구 완료!) ---
+// --- 5. 인터랙션 처리 (호감도 시스템 임베드 카드화 완료!) ---
 client.on(Events.InteractionCreate, async (i) => {
     if (!i.isChatInputCommand() && !i.isModalSubmit()) return;
 
@@ -253,6 +253,7 @@ client.on(Events.InteractionCreate, async (i) => {
         return i.reply({ content: `✨ ID: **${targetId}** 유저 차단을 풀었어!`, flags: MessageFlags.Ephemeral });
     }
 
+    // 🌟 1. 호감도관리 명령어 임베드 디자인 변경
     if (i.commandName === "호감도관리") {
         const target = i.options.getUser("유저");
         const val = i.options.getString("값").toLowerCase();
@@ -260,14 +261,45 @@ client.on(Events.InteractionCreate, async (i) => {
         let next = (data?.score || 0);
         if (val === "max") next = 9999; else if (val === "min") next = 0; else next += (parseInt(val) || 0);
         await supabase.from("user_affinity").upsert({ user_id: target.id, guild_id: i.guildId, score: next });
-        return i.reply({ content: `✅ ${target.username}님 점수 조절 완료! (\`${next}점\`)`, flags: MessageFlags.Ephemeral });
+        
+        const manageEmbed = new EmbedBuilder()
+            .setAuthor({ name: "🛠️ 이린이 수동 호감도 조정", iconURL: i.guild.iconURL() })
+            .setColor(0x2ECC71)
+            .setDescription(`**${target.username}** 님의 호감도 수치가 강제로 변경되었어!`)
+            .addFields(
+                { name: "🎯 조정 대상", value: `<@${target.id}>`, inline: true },
+                { name: "📈 반영된 스코어", value: `> **${next}** 점`, inline: true }
+            )
+            .setFooter({ text: `수정 권한자: ${i.user.username}` })
+            .setTimestamp();
+
+        return i.reply({ embeds: [manageEmbed], flags: MessageFlags.Ephemeral });
     }
 
+    // 🌟 2. 호감도 명령어 임베드 디자인 변경
     if (i.commandName === "호감도") {
         const target = i.options.getUser("유저") || i.user;
         let { data } = await supabase.from("user_affinity").select("score").eq("user_id", target.id).eq("guild_id", i.guildId).single();
         const score = data?.score || 0;
-        return i.reply({ content: `💖 ${target.username}님의 호감도는 \`${score}\`점이야!` });
+
+        // 호감도 수치에 따른 관계 텍스트 부여
+        let relationStatus = "어색어색하고 서먹한 사이.. 😶";
+        if (score >= 50) relationStatus = "말이 조금씩 통하는 아는 지인! 🌱";
+        if (score >= 200) relationStatus = "만나면 반갑게 인사하는 친한 친구! 🥰";
+        if (score >= 600) relationStatus = "이린이가 엄청 의지하는 소중한 단짝! 💖";
+        if (score >= 1500) relationStatus = "영원히 떨어질 수 없는 인생의 동반자! 💕";
+
+        const affinityEmbed = new EmbedBuilder()
+            .setAuthor({ name: "💖 이린이 호감도 프로필", iconURL: target.displayAvatarURL({ dynamic: true }) })
+            .setColor(0xFF69B4)
+            .setDescription(`<@${target.id}> 님과 이린이의 친밀도 카드야!`)
+            .addFields(
+                { name: "📊 현재 친밀 점수", value: `> \`${score}\` 점`, inline: true },
+                { name: "💌 우리 관계 상태", value: `> **${relationStatus}**`, inline: true }
+            )
+            .setTimestamp();
+
+        return i.reply({ embeds: [affinityEmbed] });
     }
 
     if (i.commandName === "셋팅") {
