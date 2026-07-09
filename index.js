@@ -104,7 +104,7 @@ const GLOBAL_RESPONSES = {
     // 👀 일상
     "뭐해": "그냥 뒹굴뒹굴... 심심해! 너는 뭐 해, {이름} 바부? 뒹굴뒹굴~",
     "머해": "그냥 뒹굴뒹굴... 심심해! 놀아줘! 뒹굴뒹굴~",
-    "머행": "그냥 뒹굴뒹굴... 심심해! 너는 뭐 해, {이름} 바부? 뒹굴뒹굴~", // 🌟 주인님의 머행 대답!
+    "머행": "그냥 뒹굴뒹굴... 심심해! 너는 뭐 해, {이름} 바부? 뒹굴뒹굴~",
     "뭐함": "{이름} 생각 중이었지! 바부야, 텔레파시 안 통했어? 😤",
     "심심해": "이린이랑 수다 떨면 시간 금방 갈걸?! ㅋㅋㅋ 놀아줘!",
     "놀아줘": "좋아!! 우리 무슨 얘기 할까? {이름}이 좋아하는 거 알려줘! ✨",
@@ -119,7 +119,7 @@ const GLOBAL_RESPONSES = {
 
     // 💕 애정
     "사랑해": "꺄아!! 나도 진짜진짜 사랑해!! 우리 평생 같이 있자! 💕",
-    "사릉해": "사릉해~ 사릉해!! {이름}이(가) 제일 좋아! 💕",
+    "사릉해": "사릉해~사릉해!! {이름}이(가) 제일 좋아! 💕",
     "사룽냐": "나두 사랑해~~! {이름}이 최고야! 💖",
     "좋아해": "부끄럽게 갑자기 왜 그래 바부! 나도 좋아! (〃▽〃)",
     "조아해": "나두 나두! 세상에서 {이름}이 제일 좋아! ✨",
@@ -173,14 +173,13 @@ const GLOBAL_RESPONSES = {
     "나갈게": "벌써 가게? ㅠㅠ 조금만 더 놀다 가지... 조심히 가!",
 };
 
-// --- 4. 명령어 등록 (🌟목록 숨김 + 비밀 권한 완벽 적용!) ---
+// --- 4. 명령어 등록 ---
 client.once(Events.ClientReady, async () => {
     console.log(`✅ [로그인] ${client.user.tag} 온라인! ✨💖`);
     const commands = [
         new SlashCommandBuilder().setName("가르치기").setDescription("이린이에게 새로운 말을 가르쳐줘! (모두 가능) 💖"),
         new SlashCommandBuilder().setName("호감도").setDescription("나랑 얼마나 친한지 확인해봐! ✨").addUserOption(o => o.setName("유저").setDescription("누구꺼 볼까?")),
         
-        // 🤫 [주인 전용] 일반 유저 목록에서는 숨김!
         new SlashCommandBuilder().setName("호감도관리").setDescription("[주인 전용] 점수 조절 🛠️")
             .addUserOption(o => o.setName("유저").setDescription("유저 선택").setRequired(true))
             .addStringOption(o => o.setName("값").setDescription("숫자 입력").setRequired(true))
@@ -207,7 +206,7 @@ client.once(Events.ClientReady, async () => {
     try { await rest.put(Routes.applicationCommands(client.user.id), { body: commands }); } catch (e) { console.error(e); }
 });
 
-// --- 5. 인터랙션 처리 (호감도 시스템 임베드 카드화 완료!) ---
+// --- 5. 인터랙션 처리 ---
 client.on(Events.InteractionCreate, async (i) => {
     if (!i.isChatInputCommand() && !i.isModalSubmit()) return;
 
@@ -253,7 +252,6 @@ client.on(Events.InteractionCreate, async (i) => {
         return i.reply({ content: `✨ ID: **${targetId}** 유저 차단을 풀었어!`, flags: MessageFlags.Ephemeral });
     }
 
-    // 🌟 1. 호감도관리 명령어 임베드 디자인 변경
     if (i.commandName === "호감도관리") {
         const target = i.options.getUser("유저");
         const val = i.options.getString("값").toLowerCase();
@@ -276,13 +274,11 @@ client.on(Events.InteractionCreate, async (i) => {
         return i.reply({ embeds: [manageEmbed], flags: MessageFlags.Ephemeral });
     }
 
-    // 🌟 2. 호감도 명령어 임베드 디자인 변경
     if (i.commandName === "호감도") {
         const target = i.options.getUser("유저") || i.user;
         let { data } = await supabase.from("user_affinity").select("score").eq("user_id", target.id).eq("guild_id", i.guildId).single();
         const score = data?.score || 0;
 
-        // 호감도 수치에 따른 관계 텍스트 부여
         let relationStatus = "어색어색하고 서먹한 사이.. 😶";
         if (score >= 50) relationStatus = "말이 조금씩 통하는 아는 지인! 🌱";
         if (score >= 200) relationStatus = "만나면 반갑게 인사하는 친한 친구! 🥰";
@@ -310,7 +306,7 @@ client.on(Events.InteractionCreate, async (i) => {
     }
 });
 
-// --- 6. 💖 AI 인격 최적화 (이모티콘 남발/중복/모든 외국어 원천 차단!) ---
+// --- 6. 💖 AI 인격 최적화 ---
 async function getGroqResponse(prompt, userName) {
     if (!GROQ_API_KEY) throw new Error("API_KEY_MISSING");
     const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
@@ -328,21 +324,17 @@ async function getGroqResponse(prompt, userName) {
             },
             { role: "user", content: prompt }
         ],
-        temperature: 0.6, // 🌟 일관성을 위해 0.6으로 하향
+        temperature: 0.6,
     }, { headers: { "Authorization": `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" } });
     
     let result = response.data.choices[0].message.content.trim();
-    
-    // 🌟 [강력 하드웨어 필터] 한자, 일본어, 키릴 문자, 기타 외국어 특수 기호 물리적 제거
     result = result.replace(/[\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\u0400-\u04FF\u00C0-\u017F]/g, '');
-    
-    // 🌟 이모티콘 2개 이상 연속 시 1개로 강제 압축
     result = result.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF]){2,}/g, '$1');
     
     return result || "웅? 한국어로 다시 예쁘게 말해줘! ✨";
 }
 
-// --- 7. 메인 대화 로직 (조사 자동 변환 엔진 탑재!) ---
+// --- 7. 메인 대화 로직 ---
 client.on(Events.MessageCreate, async (msg) => {
     if (msg.author.bot || !msg.content.startsWith("이린아")) return;
 
@@ -356,7 +348,8 @@ client.on(Events.MessageCreate, async (msg) => {
     }
     if (msg.channel.id !== aiChannelId) return;
 
-    const userName = msg.member?.displayName || msg.author.username;
+    // 🛠️ [수정 구간] GuildMembers 인텐트가 없을 때도 디스코드의 별명/글로벌 이름을 완벽하게 가져오도록 개선
+    const userName = msg.member?.displayName || msg.author.globalName || msg.author.username;
     const processJosa = (text) => {
         return text
             .replace(/{이름}이\/가/g, addJosa(userName, "이/가"))
@@ -370,13 +363,11 @@ client.on(Events.MessageCreate, async (msg) => {
 
     const cleanPrompt = content.replace(/[\s!?~.,]/g, "").toLowerCase();
 
-    // ⚡ [최적화 1순위] 초고속 내장 스타터팩 즉시 판별 검사 진행 (Supabase를 호출하지 않음으로써 대기시간을 삭제)
     if (GLOBAL_RESPONSES[cleanPrompt]) {
         return msg.channel.send(processJosa(GLOBAL_RESPONSES[cleanPrompt]));
     }
 
     try {
-        // ⚡ [최적화 2순위] 테이블 전체 다운로드 차단 및 유저가 전송한 해당 문자열만 정확히 인덱스 서칭(0.01초 소요)
         const { data: matchedWords } = await supabase
             .from("taught_words")
             .select("response")
